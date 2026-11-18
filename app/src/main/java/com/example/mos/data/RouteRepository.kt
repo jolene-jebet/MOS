@@ -14,6 +14,7 @@ interface RouteRepository {
     suspend fun getRoutes(from: Place, to: Place, mode: TransportMode): List<Route>
     suspend fun getRoute(routeId: String): Route?
     suspend fun getPlaces(): List<Place>
+    suspend fun searchPlaces(query: String): List<Place>
 }
 
 class FakeRouteRepository(private val context: Context? = null) : RouteRepository {
@@ -127,5 +128,12 @@ class FakeRouteRepository(private val context: Context? = null) : RouteRepositor
             return root.places
         }
         return mockPlaces
+    }
+
+    override suspend fun searchPlaces(query: String): List<Place> {
+        val places = getPlaces()
+        if (query.isBlank()) return places
+        val filtered = places.filter { it.name.contains(query, ignoreCase = true) }
+        return if (filtered.isNotEmpty()) filtered else places
     }
 }
