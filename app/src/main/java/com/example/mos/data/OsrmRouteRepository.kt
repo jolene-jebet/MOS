@@ -1,6 +1,7 @@
-// OWNER: B — OsrmRouteRepository implementation supporting driving (Boda, Matatu, Private) and foot (Walk) profiles
+// OWNER: B — OsrmRouteRepository implementation supporting driving/foot profiles and Nominatim place search
 package com.example.mos.data
 
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
@@ -34,10 +35,38 @@ interface OsrmApiService {
     ): OsrmResponse
 }
 
+// Nominatim Geocoding API DTOs & Service
+data class NominatimPlace(
+    val place_id: Long = 0,
+    val display_name: String = "",
+    val lat: String = "0.0",
+    val lon: String = "0.0"
+) {
+    fun toPlace(): Place {
+        val shortName = display_name.split(",").firstOrNull()?.trim() ?: display_name
+        return Place(
+            id = place_id.toString(),
+            name = shortName,
+            lat = lat.toDoubleOrNull() ?: 0.0,
+            lng = lon.toDoubleOrNull() ?: 0.0
+        )
+    }
+}
+
+interface NominatimApiService {
+    @GET("search")
+    suspend fun searchPlaces(
+        @Query("q") query: String,
+        @Query("format") format: String = "json",
+        @Query("limit") limit: Int = 8,
+        @Query("viewbox") viewbox: String = "36.65,-1.45,37.05,-1.15",
+        @Query("bounded") bounded: Int = 1
+    ): List<NominatimPlace>
+}
+
 /**
- * OsrmRouteRepository fetches real route geometry and alternatives from OSRM:
- * - Driving profile (https://router.project-osrm.org/) for Boda, Matatu, and Private car.
- * - Foot profile (https://routing.openstreetmap.de/routed-foot/) for Walking.
+ * OsrmRouteRepository fetches real route geometry and alternatives from OSRM,
+ * and searches real places from OpenStreetMap's Nominatim Geocoding API.
  */
 class OsrmRouteRepository(
     private val apiService: OsrmApiService = Retrofit.Builder()
@@ -45,6 +74,21 @@ class OsrmRouteRepository(
         .addConverterFactory(GsonConverterFactory.create())
         .build()
         .create(OsrmApiService::class.java),
+    private val nominatimApiService: NominatimApiService = Retrofit.Builder()
+        .baseUrl("https://nominatim.openstreetmap.org/")
+        .client(
+            OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    val request = chain.request().newBuilder()
+                        .header("User-Agent", "MOS-NairobiSafetyNavigator/1.0 (contact@mos.app)")
+                        .build()
+                    chain.proceed(request)
+                }
+                .build()
+        )
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+        .create(NominatimApiService::class.java),
     private val fallbackRepository: RouteRepository = FakeRouteRepository()
 ) : RouteRepository {
 
@@ -104,5 +148,19 @@ class OsrmRouteRepository(
 
     override suspend fun getPlaces(): List<Place> {
         return fallbackRepository.getPlaces()
+    }
+
+    override suspend fun searchPlaces(query: String): List<Place> {
+        if (query.isBlank()) return getPlaces()
+        return try {
+            val results = nominatimApiService.searchPlaces(query)
+            if (results.isNotEmpty()) {
+                results.map { it.toPlace() }
+            } else {
+                fallbackRepository.searchPlaces(query)
+            }
+        } catch (_: Exception) {
+            fallbackRepository.searchPlaces(query)
+        }
     }
 }
