@@ -2,17 +2,96 @@
   "routes": [
     {
       "id": "route-1",
-      "name": "TODO",
+      "name": "Via Ngong Road (Safe Corridor)",
       "mode": "WALK",
-      "stops": [],
+      "stops": [
+        { "name": "CBD Centre", "lat": -1.2921, "lng": 36.8219 },
+        { "name": "Kilimani Stage", "lat": -1.2950, "lng": 36.7920 },
+        { "name": "Junction Mall", "lat": -1.2985, "lng": 36.7750 }
+      ],
       "risk": {
-        "overall": 0.0,
-        "accident": 0.0,
-        "flooding": 0.0,
-        "lighting": 0.0
+        "overall": 0.12,
+        "accident": 0.10,
+        "flooding": 0.05,
+        "lighting": 0.15
+      }
+    },
+    {
+      "id": "route-2",
+      "name": "Via Valley Road Shortcut",
+      "mode": "WALK",
+      "stops": [
+        { "name": "CBD Centre", "lat": -1.2921, "lng": 36.8219 },
+        { "name": "Upper Hill Junction", "lat": -1.2980, "lng": 36.8100 },
+        { "name": "Hurlingham", "lat": -1.2940, "lng": 36.7900 }
+      ],
+      "risk": {
+        "overall": 0.35,
+        "accident": 0.40,
+        "flooding": 0.20,
+        "lighting": 0.45
+      }
+    },
+    {
+      "id": "route-3",
+      "name": "Boda Express via Uhuru Highway",
+      "mode": "BODA",
+      "stops": [
+        { "name": "CBD Centre", "lat": -1.2921, "lng": 36.8219 },
+        { "name": "Uhuru Highway Roundabout", "lat": -1.2880, "lng": 36.8230 },
+        { "name": "Westlands", "lat": -1.2670, "lng": 36.8110 }
+      ],
+      "risk": {
+        "overall": 0.28,
+        "accident": 0.45,
+        "flooding": 0.10,
+        "lighting": 0.20
+      }
+    },
+    {
+      "id": "route-4",
+      "name": "Matatu No. 24 via Waiyaki Way",
+      "mode": "MATATU",
+      "stops": [
+        { "name": "Bus Station", "lat": -1.2860, "lng": 36.8220 },
+        { "name": "Museum Hill", "lat": -1.2750, "lng": 36.8150 },
+        { "name": "Sarit Centre", "lat": -1.2630, "lng": 36.8020 }
+      ],
+      "risk": {
+        "overall": 0.18,
+        "accident": 0.22,
+        "flooding": 0.15,
+        "lighting": 0.12
+      }
+    },
+    {
+      "id": "route-5",
+      "name": "Private Car Route via Express Way",
+      "mode": "PRIVATE",
+      "stops": [
+        { "name": "Mlolongo Toll", "lat": -1.3500, "lng": 36.9300 },
+        { "name": "Nyayo Stadium", "lat": -1.3050, "lng": 36.8280 },
+        { "name": "Westlands Exit", "lat": -1.2670, "lng": 36.8110 }
+      ],
+      "risk": {
+        "overall": 0.08,
+        "accident": 0.09,
+        "flooding": 0.02,
+        "lighting": 0.05
       }
     }
   ],
   "incidents": [],
-  "places": []
+  "places": [
+    { "id": "p1", "name": "CBD Centre", "lat": -1.2921, "lng": 36.8219 },
+    { "id": "p2", "name": "Westlands", "lat": -1.2670, "lng": 36.8110 },
+    { "id": "p3", "name": "Kilimani", "lat": -1.2950, "lng": 36.7920 },
+    { "id": "p4", "name": "Upper Hill", "lat": -1.2980, "lng": 36.8100 },
+    { "id": "p5", "name": "Karen", "lat": -1.3200, "lng": 36.7090 },
+    { "id": "p6", "name": "Eastleigh", "lat": -1.2730, "lng": 36.8500 },
+    { "id": "p7", "name": "Kasarani", "lat": -1.2210, "lng": 36.8900 },
+    { "id": "p8", "name": "Lavington", "lat": -1.2780, "lng": 36.7650 },
+    { "id": "p9", "name": "South B", "lat": -1.3100, "lng": 36.8400 },
+    { "id": "p10", "name": "Parklands", "lat": -1.2600, "lng": 36.8200 }
+  ]
 }
