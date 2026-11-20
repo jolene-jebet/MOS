@@ -41,15 +41,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Globally configure osmdroid User-Agent for all tile downloader threads across screen transitions
-        val prefs = getSharedPreferences("${packageName}_preferences", MODE_PRIVATE)
-        org.osmdroid.config.Configuration.getInstance().apply {
-            load(this@MainActivity, prefs)
-            userAgentValue = "${packageName}/1.0 (contact@mos.app; MOS-NairobiSafetyNavigator)"
-            save(this@MainActivity, prefs)
-        }
-
         enableEdgeToEdge()
         setContent {
             MOSTheme {
