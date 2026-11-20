@@ -51,6 +51,19 @@ MOS/
 - `fake_data.json` must match the agreed AI response shape: `{ overall, accident, flooding, lighting }` (percentages).
 - The "Safest route" is always shown first, regardless of travel time.
 
+## AI CONTRACT
+
+- Endpoint: `POST /predict` (base URL in `data/RiskApi.kt`, currently `http://10.0.2.2:8000/` for the emulator).
+- Request:
+  ```json
+  { "coordinates": [[lat, lng], ...], "mode": "MATATU", "hour": 17 }
+  ```
+  `coordinates` come from the route's stops, `mode` is `TransportMode.name`, `hour` is the current hour (0–23).
+- Response (all values 0–1):
+  ```json
+  { "overall": 0.12, "accident": 0.10, "flooding": 0.05, "lighting": 0.15 }
+  ```
+
 ## SECRETS
 
 - NEVER commit `local.properties` or `app/google-services.json`. Both must be in `.gitignore`.
