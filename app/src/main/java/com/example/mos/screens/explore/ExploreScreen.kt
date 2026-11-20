@@ -27,11 +27,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.mos.data.FakeRiskRepository
-import com.example.mos.data.FakeRouteRepository
-import com.example.mos.data.GoogleRouteRepository
 import com.example.mos.data.Place
+import com.example.mos.data.RiskRepository
 import com.example.mos.data.Route
+import com.example.mos.data.RouteRepository
 import com.example.mos.data.TransportMode
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -53,7 +52,9 @@ import kotlinx.coroutines.CancellationException
 @Composable
 fun ExploreScreen(
     onRouteClick: (routeId: String) -> Unit,
-    viewModel: ExploreViewModel = rememberExploreViewModel()
+    routeRepository: RouteRepository,
+    riskRepository: RiskRepository,
+    viewModel: ExploreViewModel = rememberExploreViewModel(routeRepository, riskRepository)
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
@@ -478,14 +479,15 @@ fun ExploreScreen(
 }
 
 @Composable
-private fun rememberExploreViewModel(): ExploreViewModel {
-    val appContext = LocalContext.current.applicationContext
+private fun rememberExploreViewModel(
+    routeRepository: RouteRepository,
+    riskRepository: RiskRepository
+): ExploreViewModel {
     return viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val googleRepo = GoogleRouteRepository(appContext, FakeRouteRepository())
-                return ExploreViewModel(googleRepo, FakeRiskRepository()) as T
+                return ExploreViewModel(routeRepository, riskRepository) as T
             }
         }
     )

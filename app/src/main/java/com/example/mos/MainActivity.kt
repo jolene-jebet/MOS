@@ -27,6 +27,7 @@ import com.example.mos.data.AuthRepository
 import com.example.mos.data.FakeAuthRepository
 import com.example.mos.data.FakeRiskRepository
 import com.example.mos.data.FakeRouteRepository
+import com.example.mos.data.GoogleRouteRepository
 import com.example.mos.data.RiskRepository
 import com.example.mos.data.RouteRepository
 import com.example.mos.screens.auth.LoginScreen
@@ -41,7 +42,7 @@ class MainActivity : ComponentActivity() {
     // Repositories are created by hand here (no Hilt).
     // TODO: swap the Fake ones for real ones and pass them to the ViewModels.
     private val authRepository: AuthRepository = FakeAuthRepository()
-    private val routeRepository: RouteRepository = FakeRouteRepository()
+    private val routeRepository: RouteRepository by lazy { GoogleRouteRepository(applicationContext, FakeRouteRepository()) }
     private val riskRepository: RiskRepository by lazy { FakeRiskRepository(applicationContext)}
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,14 +50,22 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MOSTheme {
-                MOSApp(authRepository = authRepository)
+                MOSApp(
+                    authRepository = authRepository,
+                    routeRepository = routeRepository,
+                    riskRepository = riskRepository
+                )
             }
         }
     }
 }
 
 @Composable
-fun MOSApp(authRepository: AuthRepository) {
+fun MOSApp(
+    authRepository: AuthRepository,
+    routeRepository: RouteRepository,
+    riskRepository: RiskRepository
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -115,7 +124,9 @@ fun MOSApp(authRepository: AuthRepository) {
             }
             composable("explore") {
                 ExploreScreen(
-                    onRouteClick = { routeId -> navController.navigate("routedetail/$routeId") }
+                    onRouteClick = { routeId -> navController.navigate("routedetail/$routeId") },
+                    routeRepository = routeRepository,
+                    riskRepository = riskRepository
                 )
             }
             composable("routedetail/{routeId}") { entry ->
