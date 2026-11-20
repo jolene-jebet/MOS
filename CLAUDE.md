@@ -1,7 +1,7 @@
 @AGENTS.md
 
 ## Person B
-### initial setup using osm
+### initial setup using osm *(Gemini Agent)*
 
 - `@Guide I am person B in this document. Let's begin with the first task under the guide.`
 - `@Guide Okay you are person B, let us start with task 1. adding the osmdroid dependency and removing the maps compose dependency`
@@ -20,7 +20,7 @@
 - `Add the safest route last and thicker, so it sits on top. Call mapView.invalidate() after changing overlays.`
 - `Material 3 BottomSheetScaffold with A's RouteCards, safest first. Tapping a card calls navController.navigate("routedetail/${route.id}")`
 
-### troubleshooting OSM
+### troubleshooting OSM *(Gemini Agent)*
 
 - `The app is running but i want to fix some bugs. The open street map section of the app has a bug where it is saying that the app is not following the tile usage policy of OpenStreetMap's volunteer-run servers: http://osm.wiki/Blocked`
 - `I am still getting the access blocked, app is not following the tile usage policy of OpenStreetMap's volunteer-run servers: http://osm.wiki/Blocked. Despite the fix implemented. It has not worked out fully. Use the instructions from https://operations.osmfoundation.org/policies/tiles/ to see what you can do to make sure that the screen is actually showcasing a map.`
@@ -28,3 +28,44 @@
 - `next rather than selecting the start and the destination sections from a select list of a few items, allow searching of places and get whether such places exist from osm itself and do the same for destinations.`
 - `Good fix for the 403 error, however sometimes during the act of zooming or when i come back to the view after going to a different view it still issues the 403 error.`
 - `1. Make it such that the on tapping the search widget search screen takes up the whole screen just like on the actual google maps app. 2. Also, make it so that when you go back to the main screen, the new routes are shown. 3. Finally, make is so that incase the routes are not able to be obtained or there is an issue in finding the route, the app displays a dismissable warning alert saying that a route could not be found.`
+
+### Migration to Google Maps SDK & Google Places/Directions APIs *(Gemini Agent)*
+
+- `Switch MOS app from OpenStreetMap (osmdroid) to Google Maps SDK (`maps-compose`), Google Directions API, Google Geocoding API, and Google Places API.`
+- `Read MAPS_API_KEY, ROUTE_API_KEY, GEOCODING_API_KEY, and PLACES_API_KEY from local.properties with trim support and expose as BuildConfig fields and manifestPlaceholders["MAPS_API_KEY"].`
+- `Created GoogleRouteRepository implementing RouteRepository with Retrofit interface for directions/json, geocode/json, and place/textsearch/json.`
+- `Migrated ExploreScreen to GoogleMap with Polyline overlays (safest route rendered thickest and on top) and remember-scoped MarkerState.`
+- `Removed default fake/criss-crossing lines on initial startup and empty states.`
+- `Implemented full-screen Google Maps style search overlay with live suggestion cards and animated camera positioning (LatLng) on selection.`
+- `Added CancellationException re-throwing in ExploreViewModel coroutines for clean job cancellations and debouncing.`
+- `Added multi-layered place search (Google Places API + Geocoding API + Local Nairobi preset fallback) and guaranteed route fallbacks.`
+
+### Switching from OSM to Google Maps (search + routes) *(Claude Web App - Sent an archive of the project)*
+
+- `@Guide I am person B. The map has a perfect Google Maps implementation, but I thought I needed all the different API keys to search for places and get routes. I even commented out some keys to fall back to the default Maps SDK for Android, but they still did not work. Console: Geocoding API 33 requests, 100% errors. Maps SDK for Android 14 requests, 0% errors.`
+- `Make the system allow searching for places and show them in a list, just like Google Maps.`
+- `Show the routes on the Google Map that is already there.`
+- `Remove the basic route overlay that appears when the route set is not proper.`
+- `Do not create the entire project again. Only give the code for the files that need to change.`
+- `Do not change how the architecture works unless it is extremely necessary.`
+- `Do not change anything outside this request or outside Person B's scope in the Guide. If in doubt, use the Guide but substitute the OSM requirements with Google Maps ones.`
+
+#### Result
+
+- Cause: legacy Directions and Places APIs cannot be enabled on new Google projects. Geocoding calls were probably rejected because an Android-restricted key needs the app package and SHA-1 on web calls.
+- One key only: `MAPS_API_KEY`. The `ROUTE`, `GEOCODING` and `PLACES` keys are no longer read.
+- `data/GoogleRouteRepository.kt`
+    - Places API (New) Text Search for place search.
+    - Routes API (`computeRoutes`) for routes. Walk uses `WALK`; Boda, Matatu and Private use `DRIVE`.
+    - Sends `X-Android-Package` and `X-Android-Cert` on every call.
+    - Removed the fake straight-line fallback routes. A failed or empty result now shows the dismissable "route not found" alert.
+    - Caches the last routes so Route Detail can find them by id.
+- `screens/explore/ExploreScreen.kt`
+    - Map zooms to fit the routes.
+    - Search list shows a name plus an address.
+    - Passes `context` to the repository.
+- `screens/explore/ExploreViewModel.kt`
+    - Search waits 400 ms after typing stops.
+    - A new route request cancels the old one.
+- Google Cloud setup: enable **Places API (New)** and **Routes API**, and allow both on the key.
+- Debugging: filter Logcat by `MOS-Google` to see Google's exact error.

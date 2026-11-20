@@ -1,4 +1,4 @@
-// OWNER: B — ExploreViewModel implementation with OSM Nominatim place search & route error handling
+// OWNER: B — ExploreViewModel implementation with Google Geocoding place search & route error handling
 package com.example.mos.screens.explore
 
 import androidx.lifecycle.ViewModel
@@ -8,6 +8,7 @@ import com.example.mos.data.RiskRepository
 import com.example.mos.data.Route
 import com.example.mos.data.RouteRepository
 import com.example.mos.data.TransportMode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,13 +20,13 @@ import kotlinx.coroutines.launch
 data class ExploreUiState(
     val routes: List<Route> = emptyList(),
     val places: List<Place> = emptyList(),
-    val originQuery: String = "CBD Centre",
-    val destinationQuery: String = "Westlands",
+    val originQuery: String = "",
+    val destinationQuery: String = "",
     val originSearchResults: List<Place> = emptyList(),
     val destinationSearchResults: List<Place> = emptyList(),
     val selectedMode: TransportMode = TransportMode.WALK,
-    val origin: Place = Place("p1", "CBD Centre", -1.2921, 36.8219),
-    val destination: Place = Place("p2", "Westlands", -1.2670, 36.8110),
+    val origin: Place? = null,
+    val destination: Place? = null,
     val isLoading: Boolean = false,
     val isSearchingOrigin: Boolean = false,
     val isSearchingDestination: Boolean = false,
@@ -42,39 +43,24 @@ class ExploreViewModel(
 
     private var originSearchJob: Job? = null
     private var destinationSearchJob: Job? = null
+    private var routesJob: Job? = null
 
     init {
-        loadPlacesAndRoutes()
+        loadPresetPlaces()
     }
 
-    fun loadPlacesAndRoutes() {
+    private fun loadPresetPlaces() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
             try {
-                val places = routeRepository.getPlaces()
-                val defaultOrigin = places.getOrNull(0) ?: _uiState.value.origin
-                val defaultDest = places.getOrNull(1) ?: _uiState.value.destination
-
+                val presets = routeRepository.getPlaces()
                 _uiState.update {
                     it.copy(
-                        places = places,
-                        originSearchResults = places,
-                        destinationSearchResults = places,
-                        origin = defaultOrigin,
-                        destination = defaultDest,
-                        originQuery = defaultOrigin.name,
-                        destinationQuery = defaultDest.name
+                        places = presets,
+                        originSearchResults = presets,
+                        destinationSearchResults = presets
                     )
                 }
-                loadRoutes()
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = e.localizedMessage ?: "Failed to load places"
-                    )
-                }
-            }
+            } catch (_: Exception) {}
         }
     }
 
@@ -82,12 +68,15 @@ class ExploreViewModel(
         _uiState.update { it.copy(originQuery = query, isSearchingOrigin = true) }
         originSearchJob?.cancel()
         originSearchJob = viewModelScope.launch {
-            delay(300) // debounce
+            delay(400)
             try {
                 val results = routeRepository.searchPlaces(query)
                 _uiState.update { it.copy(originSearchResults = results, isSearchingOrigin = false) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
-                _uiState.update { it.copy(isSearchingOrigin = false) }
+                val fallback = _uiState.value.places.filter { it.name.contains(query, ignoreCase = true) }
+                _uiState.update { it.copy(originSearchResults = fallback, isSearchingOrigin = false) }
             }
         }
     }
@@ -96,29 +85,38 @@ class ExploreViewModel(
         _uiState.update { it.copy(destinationQuery = query, isSearchingDestination = true) }
         destinationSearchJob?.cancel()
         destinationSearchJob = viewModelScope.launch {
-            delay(300) // debounce
+            delay(400)
             try {
                 val results = routeRepository.searchPlaces(query)
                 _uiState.update { it.copy(destinationSearchResults = results, isSearchingDestination = false) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
-                _uiState.update { it.copy(isSearchingDestination = false) }
+                val fallback = _uiState.value.places.filter { it.name.contains(query, ignoreCase = true) }
+                _uiState.update { it.copy(destinationSearchResults = fallback, isSearchingDestination = false) }
             }
         }
     }
 
     fun setTransportMode(mode: TransportMode) {
         _uiState.update { it.copy(selectedMode = mode) }
-        loadRoutes()
+        if (_uiState.value.origin != null && _uiState.value.destination != null) {
+            loadRoutes()
+        }
     }
 
     fun selectOrigin(place: Place) {
         _uiState.update { it.copy(origin = place, originQuery = place.name) }
-        loadRoutes()
+        if (_uiState.value.destination != null) {
+            loadRoutes()
+        }
     }
 
     fun selectDestination(place: Place) {
         _uiState.update { it.copy(destination = place, destinationQuery = place.name) }
-        loadRoutes()
+        if (_uiState.value.origin != null) {
+            loadRoutes()
+        }
     }
 
     fun dismissError() {
@@ -126,13 +124,14 @@ class ExploreViewModel(
     }
 
     fun loadRoutes() {
-        viewModelScope.launch {
+        val origin = _uiState.value.origin ?: return
+        val destination = _uiState.value.destination ?: return
+
+        routesJob?.cancel()
+        routesJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 val currentMode = _uiState.value.selectedMode
-                val origin = _uiState.value.origin
-                val destination = _uiState.value.destination
-
                 val fetchedRoutes = routeRepository.getRoutes(origin, destination, currentMode)
 
                 if (fetchedRoutes.isEmpty()) {
@@ -152,6 +151,8 @@ class ExploreViewModel(
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(

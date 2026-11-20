@@ -1,4 +1,4 @@
-// OWNER: B — ExploreScreen implementation with Google Maps full-screen search, OSRM routes, and dismissable error alerts
+// OWNER: B — ExploreScreen implementation with Google Maps full-screen search, Google Routes API routes, and dismissable error alerts
 package com.example.mos.screens.explore
 
 import android.Manifest
@@ -19,51 +19,43 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mos.data.FakeRiskRepository
 import com.example.mos.data.FakeRouteRepository
-import com.example.mos.data.OsrmRouteRepository
+import com.example.mos.data.GoogleRouteRepository
 import com.example.mos.data.Place
 import com.example.mos.data.Route
 import com.example.mos.data.TransportMode
-import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Polyline
-import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
-import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
+import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.CancellationException
 
 /**
- * ExploreScreen displays a map-centric view where osmdroid MapView takes up the full screen background.
- * Tapping the top search bar opens a full-screen Google Maps style search page.
- * Displays dismissable warning alerts if routes cannot be found.
+ * ExploreScreen displays a map-centric view powered by Google Maps Compose.
+ * Features a compact search bar opening a full-screen search overlay with real-time Google Geocoding place suggestions,
+ * Google Directions API routes sorted safest first, and dismissable error alerts.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(
     onRouteClick: (routeId: String) -> Unit,
-    viewModel: ExploreViewModel = viewModel(
-        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val fakeRepo = FakeRouteRepository()
-                val osrmRepo = OsrmRouteRepository(fallbackRepository = fakeRepo)
-                return ExploreViewModel(osrmRepo, FakeRiskRepository()) as T
-            }
-        }
-    )
+    viewModel: ExploreViewModel = rememberExploreViewModel()
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsState()
     var isSearchFullScreen by remember { mutableStateOf(false) }
 
@@ -72,13 +64,6 @@ fun ExploreScreen(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { _ ->
         // Location permission results handled
-    }
-
-    // Configure osmdroid User-Agent synchronously BEFORE MapView creation to comply with OSM Tile Usage Policy
-    remember(context) {
-        Configuration.getInstance().apply {
-            userAgentValue = "MOS-NairobiSafetyNavigator/1.0 (${context.packageName}; contact@mos.app)"
-        }
     }
 
     // Request location permissions on launch
@@ -102,78 +87,43 @@ fun ExploreScreen(
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    // Remember MapView and forward screen lifecycle (onResume, onPause, onDetach)
-    val mapView = remember {
-        MapView(context).apply {
-            setTileSource(TileSourceFactory.MAPNIK)
-            setMultiTouchControls(true)
-            controller.setZoom(14.0)
-            controller.setCenter(GeoPoint(-1.2864, 36.8172))
+    // Camera position state (Nairobi CBD center default)
+    val defaultLocation = LatLng(-1.2864, 36.8172)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(defaultLocation, 14f)
+    }
+
+    // Animate camera to destination or origin whenever a place is searched or selected
+    LaunchedEffect(uiState.origin, uiState.destination) {
+        val targetPlace = uiState.destination ?: uiState.origin
+        targetPlace?.let {
+            cameraPositionState.animate(
+                com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(
+                    LatLng(it.lat, it.lng),
+                    14.5f
+                )
+            )
         }
     }
 
-    // Add MyLocationNewOverlay and enable my location if permitted, or fall back to CBD
-    remember(mapView, context, hasLocationPermission) {
-        val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(context), mapView)
-        if (hasLocationPermission) {
-            locationOverlay.enableMyLocation()
-            locationOverlay.enableFollowLocation()
-        } else {
-            mapView.controller.setCenter(GeoPoint(-1.2864, 36.8172))
-            mapView.controller.setZoom(14.0)
-        }
-        mapView.overlays.add(locationOverlay)
-        locationOverlay
-    }
-
-    // Update map overlays with route Polylines colored by risk.
-    LaunchedEffect(mapView, uiState.routes, uiState.origin, uiState.destination) {
-        mapView.overlays.removeAll { it is Polyline }
-
-        uiState.routes.reversed().forEach { route ->
-            val isSafest = route == uiState.routes.first()
-            val polyline = Polyline().apply {
-                val geoPoints = route.stops.map { stop -> GeoPoint(stop.lat, stop.lng) }
-                if (geoPoints.size < 2) {
-                    setPoints(
-                        listOf(
-                            GeoPoint(uiState.origin.lat, uiState.origin.lng),
-                            GeoPoint(uiState.destination.lat, uiState.destination.lng)
-                        )
-                    )
-                } else {
-                    setPoints(geoPoints)
-                }
-
-                val colorInt = when {
-                    route.risk.overall < 0.15 -> Color(0xFF2DB864).toArgb() // Safe green
-                    route.risk.overall <= 0.30 -> Color(0xFFF9AB00).toArgb() // Caution amber
-                    else -> Color(0xFFD93025).toArgb() // Risk red
-                }
-                outlinePaint.color = colorInt
-                outlinePaint.strokeWidth = if (isSafest) 16f else 10f
+    // When routes arrive, zoom the map so the whole route is visible
+    val density = LocalDensity.current
+    LaunchedEffect(uiState.routes) {
+        val points = uiState.routes.flatMap { it.stops }
+        if (points.size >= 2) {
+            val bounds = LatLngBounds.builder().apply {
+                points.forEach { include(LatLng(it.lat, it.lng)) }
+            }.build()
+            val padding = with(density) { 120.dp.roundToPx() }
+            try {
+                cameraPositionState.animate(
+                    com.google.android.gms.maps.CameraUpdateFactory.newLatLngBounds(bounds, padding)
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: IllegalStateException) {
+                // Map not laid out yet; keep the current camera.
             }
-            mapView.overlays.add(polyline)
-        }
-        mapView.invalidate()
-    }
-
-    DisposableEffect(lifecycleOwner, mapView) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> {
-                    Configuration.getInstance().userAgentValue =
-                        "${context.packageName}/1.0 (contact@mos.app; MOS-NairobiSafetyNavigator)"
-                    mapView.onResume()
-                }
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                else -> {}
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            mapView.onDetach()
         }
     }
 
@@ -203,7 +153,7 @@ fun ExploreScreen(
 
     val scaffoldState = rememberBottomSheetScaffoldState()
 
-    // Main Layout: Map + Bottom Sheet
+    // Main Layout: Google Map + Bottom Sheet
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetPeekHeight = 120.dp,
@@ -255,7 +205,11 @@ fun ExploreScreen(
                             .height(100.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No routes available.")
+                        Text(
+                            text = "Search for a starting point and destination above to view safe routes.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 } else {
                     LazyColumn(
@@ -282,11 +236,51 @@ fun ExploreScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Full screen osmdroid MapView
-            androidx.compose.ui.viewinterop.AndroidView(
+            // Full screen Google Map
+            GoogleMap(
                 modifier = Modifier.fillMaxSize(),
-                factory = { mapView }
-            )
+                cameraPositionState = cameraPositionState,
+                properties = MapProperties(isMyLocationEnabled = hasLocationPermission)
+            ) {
+                // Origin Marker
+                uiState.origin?.let { origin ->
+                    val originState = remember(origin.lat, origin.lng) { MarkerState(position = LatLng(origin.lat, origin.lng)) }
+                    Marker(
+                        state = originState,
+                        title = origin.name,
+                        snippet = "Origin"
+                    )
+                }
+
+                // Destination Marker
+                uiState.destination?.let { dest ->
+                    val destState = remember(dest.lat, dest.lng) { MarkerState(position = LatLng(dest.lat, dest.lng)) }
+                    Marker(
+                        state = destState,
+                        title = dest.name,
+                        snippet = "Destination"
+                    )
+                }
+
+                // Route Polylines (safest route rendered last and thicker with higher zIndex)
+                uiState.routes.reversed().forEach { route ->
+                    if (route.stops.size >= 2) {
+                        val isSafest = route == uiState.routes.first()
+                        val points = route.stops.map { LatLng(it.lat, it.lng) }
+                        val color = when {
+                            route.risk.overall < 0.15 -> Color(0xFF2DB864) // Safe green
+                            route.risk.overall <= 0.30 -> Color(0xFFF9AB00) // Caution amber
+                            else -> Color(0xFFD93025) // Risk red
+                        }
+                        Polyline(
+                            points = points,
+                            color = color,
+                            width = if (isSafest) 16f else 10f,
+                            zIndex = if (isSafest) 2f else 1f
+                        )
+                    }
+                }
+            }
 
             // Top Floating Header & Compact Search Bar Overlay
             Column(
@@ -336,6 +330,12 @@ fun ExploreScreen(
                 }
 
                 // Compact Search Bar (Google Maps style)
+                val searchLabel = if (uiState.origin != null && uiState.destination != null) {
+                    "${uiState.origin?.name?.substringBefore(", ")} → ${uiState.destination?.name?.substringBefore(", ")}"
+                } else {
+                    "Search origin & destination..."
+                }
+
                 Surface(
                     onClick = { isSearchFullScreen = true },
                     modifier = Modifier.fillMaxWidth(),
@@ -351,15 +351,18 @@ fun ExploreScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(
+                            modifier = Modifier.weight(1f),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(text = "🔍", style = MaterialTheme.typography.titleMedium)
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "${uiState.origin.name} → ${uiState.destination.name}",
+                                    text = searchLabel,
                                     style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     text = "Tap to search routes or change mode (${uiState.selectedMode.name})",
@@ -375,22 +378,6 @@ fun ExploreScreen(
                         )
                     }
                 }
-            }
-
-            // OSM Copyright Attribution Badge at Bottom End
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 12.dp, bottom = 12.dp),
-                shape = RoundedCornerShape(4.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
-            ) {
-                Text(
-                    text = "© OpenStreetMap contributors",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
             }
 
             // Full-Screen Google Maps Style Search Overlay Page
@@ -426,13 +413,26 @@ fun ExploreScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Full Screen Search Fields
-                        LocationDropdownCardContent(
-                            uiState = uiState,
-                            onOriginQueryChanged = { viewModel.searchOrigin(it) },
-                            onOriginSelected = { viewModel.selectOrigin(it) },
-                            onDestinationQueryChanged = { viewModel.searchDestination(it) },
-                            onDestinationSelected = { viewModel.selectDestination(it) }
+                        // Origin Search Box with Live Auto-suggestions
+                        LocationSearchInputSection(
+                            label = "Origin (Starting Location)",
+                            query = uiState.originQuery,
+                            searchResults = uiState.originSearchResults,
+                            isSearching = uiState.isSearchingOrigin,
+                            onQueryChanged = { viewModel.searchOrigin(it) },
+                            onPlaceSelected = { viewModel.selectOrigin(it) }
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Destination Search Box with Live Auto-suggestions
+                        LocationSearchInputSection(
+                            label = "Destination (Where to?)",
+                            query = uiState.destinationQuery,
+                            searchResults = uiState.destinationSearchResults,
+                            isSearching = uiState.isSearchingDestination,
+                            onQueryChanged = { viewModel.searchDestination(it) },
+                            onPlaceSelected = { viewModel.selectDestination(it) }
                         )
 
                         Spacer(modifier = Modifier.height(20.dp))
@@ -477,105 +477,92 @@ fun ExploreScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LocationDropdownCardContent(
-    uiState: ExploreUiState,
-    onOriginQueryChanged: (String) -> Unit,
-    onOriginSelected: (Place) -> Unit,
-    onDestinationQueryChanged: (String) -> Unit,
-    onDestinationSelected: (Place) -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Origin Search Box with OSM Nominatim auto-suggestions
-        var originExpanded by remember { mutableStateOf(false) }
-        ExposedDropdownMenuBox(
-            expanded = originExpanded && uiState.originSearchResults.isNotEmpty(),
-            onExpandedChange = { originExpanded = it }
-        ) {
-            OutlinedTextField(
-                value = uiState.originQuery,
-                onValueChange = { query ->
-                    onOriginQueryChanged(query)
-                    originExpanded = true
-                },
-                label = { Text("Origin (Search OSM Places)") },
-                trailingIcon = {
-                    if (uiState.isSearchingOrigin) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = originExpanded)
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true)
-            )
-            ExposedDropdownMenu(
-                expanded = originExpanded && uiState.originSearchResults.isNotEmpty(),
-                onDismissRequest = { originExpanded = false }
-            ) {
-                uiState.originSearchResults.forEach { place ->
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text(place.name, style = MaterialTheme.typography.bodyMedium)
-                                Text("Lat: ${place.lat}, Lng: ${place.lng}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        },
-                        onClick = {
-                            onOriginSelected(place)
-                            originExpanded = false
-                        }
-                    )
-                }
+private fun rememberExploreViewModel(): ExploreViewModel {
+    val appContext = LocalContext.current.applicationContext
+    return viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val googleRepo = GoogleRouteRepository(appContext, FakeRouteRepository())
+                return ExploreViewModel(googleRepo, FakeRiskRepository()) as T
             }
         }
+    )
+}
 
-        // Destination Search Box with OSM Nominatim auto-suggestions
-        var destExpanded by remember { mutableStateOf(false) }
-        ExposedDropdownMenuBox(
-            expanded = destExpanded && uiState.destinationSearchResults.isNotEmpty(),
-            onExpandedChange = { destExpanded = it }
-        ) {
-            OutlinedTextField(
-                value = uiState.destinationQuery,
-                onValueChange = { query ->
-                    onDestinationQueryChanged(query)
-                    destExpanded = true
-                },
-                label = { Text("Destination (Search OSM Places)") },
-                trailingIcon = {
-                    if (uiState.isSearchingDestination) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = destExpanded)
+@Composable
+fun LocationSearchInputSection(
+    label: String,
+    query: String,
+    searchResults: List<Place>,
+    isSearching: Boolean,
+    onQueryChanged: (String) -> Unit,
+    onPlaceSelected: (Place) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChanged,
+            label = { Text(label) },
+            placeholder = { Text("Search location in Nairobi...") },
+            leadingIcon = { Text("📍") },
+            trailingIcon = {
+                if (isSearching) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else if (query.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChanged("") }) {
+                        Text("✕", style = MaterialTheme.typography.bodyMedium)
                     }
-                },
+                }
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Live Location Suggestions Cards List
+        if (searchResults.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true)
-            )
-            ExposedDropdownMenu(
-                expanded = destExpanded && uiState.destinationSearchResults.isNotEmpty(),
-                onDismissRequest = { destExpanded = false }
+                    .heightIn(max = 200.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                uiState.destinationSearchResults.forEach { place ->
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text(place.name, style = MaterialTheme.typography.bodyMedium)
-                                Text("Lat: ${place.lat}, Lng: ${place.lng}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    items(searchResults) { place ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPlaceSelected(place) }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("📍 ", style = MaterialTheme.typography.titleMedium)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = place.name.substringBefore(", "),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = place.name.substringAfter(", ", "Nairobi, Kenya"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
-                        },
-                        onClick = {
-                            onDestinationSelected(place)
-                            destExpanded = false
                         }
-                    )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                    }
                 }
             }
         }

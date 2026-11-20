@@ -107,7 +107,7 @@ class OsrmRouteRepository(
             val response = apiService.getRoutes(url)
 
             if (response.routes.isEmpty()) {
-                return fallbackRepository.getRoutes(from, to, mode)
+                return emptyList()
             }
 
             // Map OSRM routes to MOS Route objects using GeoJSON [lng, lat] pairs directly
@@ -137,8 +137,7 @@ class OsrmRouteRepository(
                 )
             }.sortedBy { it.risk.overall }
         } catch (_: Exception) {
-            // Fall back to fake repository if network fails
-            fallbackRepository.getRoutes(from, to, mode)
+            emptyList()
         }
     }
 
