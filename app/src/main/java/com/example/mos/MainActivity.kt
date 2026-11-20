@@ -7,12 +7,17 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -37,44 +42,46 @@ class MainActivity : ComponentActivity() {
     // TODO: swap the Fake ones for real ones and pass them to the ViewModels.
     private val authRepository: AuthRepository = FakeAuthRepository()
     private val routeRepository: RouteRepository = FakeRouteRepository()
-    private val riskRepository: RiskRepository = FakeRiskRepository()
+    private val riskRepository: RiskRepository by lazy { FakeRiskRepository(applicationContext)}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             MOSTheme {
-                MOSApp()
+                MOSApp(authRepository = authRepository)
             }
         }
     }
 }
 
 @Composable
-fun MOSApp() {
+fun MOSApp(authRepository: AuthRepository) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    // Bottom bar is shown only after login.
-    val showBottomBar = currentRoute != null && currentRoute != "login" && currentRoute != "signup"
+    // Resume straight into Explore if already signed in; otherwise start at Login.
+    val startDestination = remember { if (authRepository.currentUser() != null) "explore" else "login" }
+
+    // Bottom bar is shown only on the two main tabs.
+    val showBottomBar = currentRoute == "explore" || currentRoute == "profile"
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
-                    // TODO: add icons
                     NavigationBarItem(
                         selected = currentRoute == "explore",
                         onClick = { navController.navigate("explore") { launchSingleTop = true } },
-                        icon = {},
+                        icon = { Icon(Icons.Default.Explore, contentDescription = "Explore") },
                         label = { Text("Explore") }
                     )
                     NavigationBarItem(
                         selected = currentRoute == "profile",
                         onClick = { navController.navigate("profile") { launchSingleTop = true } },
-                        icon = {},
+                        icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
                         label = { Text("Profile") }
                     )
                 }
@@ -83,7 +90,7 @@ fun MOSApp() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "login",
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable("login") {
