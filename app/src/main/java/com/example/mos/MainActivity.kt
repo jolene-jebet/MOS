@@ -19,6 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -35,6 +39,7 @@ import com.example.mos.screens.auth.SignupScreen
 import com.example.mos.screens.explore.ExploreScreen
 import com.example.mos.screens.profile.ProfileScreen
 import com.example.mos.screens.routedetail.RouteDetailScreen
+import com.example.mos.screens.routedetail.RouteDetailViewModel
 import com.example.mos.ui.theme.MOSTheme
 
 class MainActivity : ComponentActivity() {
@@ -130,7 +135,22 @@ fun MOSApp(
                 )
             }
             composable("routedetail/{routeId}") { entry ->
-                RouteDetailScreen(routeId = entry.arguments?.getString("routeId").orEmpty())
+                val routeDetailViewModel: RouteDetailViewModel = viewModel(
+                    viewModelStoreOwner = entry,
+                    factory = viewModelFactory {
+                        initializer {
+                            RouteDetailViewModel(
+                                savedStateHandle = createSavedStateHandle(),
+                                routeRepository = routeRepository,
+                                riskRepository = riskRepository
+                            )
+                        }
+                    }
+                )
+                RouteDetailScreen(
+                    viewModel = routeDetailViewModel,
+                    onBack = { navController.popBackStack() }
+                )
             }
             composable("profile") {
                 ProfileScreen(
