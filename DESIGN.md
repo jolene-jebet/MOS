@@ -118,7 +118,7 @@ Pill with icon + label: Walk · Boda Boda · Matatu · Private.
 | **TextField** | Pill, `SurfaceVariant` fill, no border, leading icon, label above the field (`bodySmall`). Password fields have an eye toggle. |
 | **MapAlertPopup** | White card on the map: red warning icon, bold title, red risk text, "Reported 4m ago by 18 commuters". |
 | **MapLegend** | "● Safe ● Caution ● Risk" in the bottom-left corner of the map. |
-| **BottomNavBar** | 2 items: **Explore** (compass) · **Profile** (person). Active = `Primary`. |
+| **BottomNavBar** | 2 items: **Explore** (map) · **Profile** (person). Outlined icons, filled when active. Green (`Primary`) bar with 24dp rounded top corners and a soft shadow; selected tab = `Primary` icon on a `PrimaryContainer` pill with a white label, unselected = white at 70%. |
 
 ---
 

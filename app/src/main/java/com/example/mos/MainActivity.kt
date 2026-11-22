@@ -7,19 +7,27 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.rounded.Map
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -94,19 +102,13 @@ fun MOSApp(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar {
-                    NavigationBarItem(
-                        selected = currentRoute == "explore",
-                        onClick = { navController.navigate("explore") { launchSingleTop = true } },
-                        icon = { Icon(Icons.Default.Explore, contentDescription = "Explore") },
-                        label = { Text("Explore") }
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == "profile",
-                        onClick = { navController.navigate("profile") { launchSingleTop = true } },
-                        icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
-                        label = { Text("Profile") }
-                    )
+                MosBottomBar(currentRoute) { route ->
+                    navController.navigate(route) {
+                        // Keep one copy of each tab, and remember Explore's map and routes.
+                        popUpTo("explore") { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
             }
         }
@@ -195,6 +197,54 @@ fun MOSApp(
                     viewModel = viewModel { EditProfileViewModel(authRepository) },
                     onBack = { navController.popBackStack() },
                     onSaved = { navController.popBackStack() }
+                )
+            }
+        }
+    }
+}
+
+// ---------- Bottom navigation ----------
+
+private data class BottomTab(
+    val route: String,
+    val label: String,
+    val selectedIcon: ImageVector,
+    val icon: ImageVector
+)
+
+private val bottomTabs = listOf(
+    BottomTab("explore", "Explore", Icons.Rounded.Map, Icons.Outlined.Map),
+    BottomTab("profile", "Profile", Icons.Rounded.Person, Icons.Outlined.Person)
+)
+
+// Green bar with rounded top corners. The selected tab gets a filled icon on a light-green pill.
+@Composable
+private fun MosBottomBar(currentRoute: String?, onTabClick: (String) -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        color = MaterialTheme.colorScheme.primary,
+        shadowElevation = 8.dp
+    ) {
+        NavigationBar(containerColor = MaterialTheme.colorScheme.primary, tonalElevation = 0.dp) {
+            bottomTabs.forEach { tab ->
+                val selected = currentRoute == tab.route
+                NavigationBarItem(
+                    selected = selected,
+                    onClick = { onTabClick(tab.route) },
+                    icon = {
+                        Icon(
+                            if (selected) tab.selectedIcon else tab.icon,
+                            contentDescription = tab.label
+                        )
+                    },
+                    label = { Text(tab.label) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.onPrimary,
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        unselectedIconColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                        unselectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                    )
                 )
             }
         }
