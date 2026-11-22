@@ -124,21 +124,27 @@ Pill with icon + label: Walk · Boda Boda · Matatu · Private.
 
 ## 6. Screens
 
+**MOS logo:** a `Primary` circle with "MOS" in bold white (`OnPrimary`). Used on Welcome, Login and Signup.
+
+### Welcome *(first screen when signed out)*
+- MOS logo centred on the screen, tagline "Move smart. Arrive safe." underneath (`titleMedium`, `TextSecondary`).
+- At the bottom: "Log in" PrimaryButton and "Sign up" outlined pill button (Primary border and text).
+
 ### Login *(no mockup: mirror Signup)*
-Shield logo, "Welcome back", email + password fields, "Sign in" PrimaryButton, "Don't have an account? **Sign up**".
+MOS logo, "Welcome back", email + password fields, "Log in" PrimaryButton, "Continue with Google" button (Google "G" logo), "Don't have an account? **Sign up**".
 
 ### Signup
-- Small top bar: "Nairobi Safety Navigator / SIGNUP".
-- Centred shield logo in a PrimaryContainer circle with a green check badge.
+- Small top bar: "MOS / SIGNUP".
+- Centred MOS logo.
 - "Create your account" + subtitle "Join thousands navigating Nairobi safely".
 - White card with fields: Full name, Email, Phone (+254 country picker), Create password, Confirm password.
-- "Create account" PrimaryButton.
-- "Already have an account? **Sign in**".
+- "Create account" PrimaryButton, then "Continue with Google" button (Google "G" logo).
+- "Already have an account? **Log in**".
 - Footer: lock icon + "End-to-end encrypted safety geolocation".
 
 ### Explore (Map Navigation)
 1. Top bar: shield icon, "Map Navigation", profile avatar button.
-2. App title "Nairobi Safety Navigator" (Primary, bold) + "● LIVE RADAR" chip.
+2. App title "MOS" (Primary, bold) + "● LIVE RADAR" chip.
 3. LocationCard (with "GPS Safe" chip and area label "Nairobi NW").
 4. ModeChip row.
 5. Map: coloured route lines (green/amber/red), destination pin, MapAlertPopup, MapLegend, locate-me and layers buttons on the right.

@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,11 +38,13 @@ import com.example.mos.data.RouteRepository
 import com.example.mos.screens.auth.AuthViewModel
 import com.example.mos.screens.auth.LoginScreen
 import com.example.mos.screens.auth.SignupScreen
+import com.example.mos.screens.auth.WelcomeScreen
 import com.example.mos.screens.explore.ExploreScreen
 import com.example.mos.screens.profile.ProfileScreen
 import com.example.mos.screens.routedetail.RouteDetailScreen
 import com.example.mos.screens.routedetail.RouteDetailViewModel
 import com.example.mos.ui.theme.MOSTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -76,8 +79,10 @@ fun MOSApp(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    // Resume straight into Explore if already signed in; otherwise start at Login.
-    val startDestination = remember { if (authRepository.currentUser() != null) "explore" else "login" }
+    val scope = rememberCoroutineScope()
+
+    // Resume straight into Explore if already signed in; otherwise start at Welcome.
+    val startDestination = remember { if (authRepository.currentUser() != null) "explore" else "welcome" }
 
     // Bottom bar is shown only on the two main tabs.
     val showBottomBar = currentRoute == "explore" || currentRoute == "profile"
@@ -108,6 +113,12 @@ fun MOSApp(
             startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable("welcome") {
+                WelcomeScreen(
+                    onLogin = { navController.navigate("login") },
+                    onSignup = { navController.navigate("signup") }
+                )
+            }
             composable("login") {
                 LoginScreen(
                     viewModel = viewModel { AuthViewModel(authRepository) },
@@ -116,7 +127,8 @@ fun MOSApp(
                             popUpTo(navController.graph.id) { inclusive = true }
                         }
                     },
-                    onGoToSignup = { navController.navigate("signup") }
+                    // popUpTo keeps the back stack as Welcome -> Signup (no Login/Signup pile-up).
+                    onGoToSignup = { navController.navigate("signup") { popUpTo("welcome") } }
                 )
             }
             composable("signup") {
@@ -127,7 +139,7 @@ fun MOSApp(
                             popUpTo(navController.graph.id) { inclusive = true }
                         }
                     },
-                    onGoToLogin = { navController.popBackStack() }
+                    onGoToLogin = { navController.navigate("login") { popUpTo("welcome") } }
                 )
             }
             composable("explore") {
@@ -158,8 +170,11 @@ fun MOSApp(
             composable("profile") {
                 ProfileScreen(
                     onSignOut = {
-                        navController.navigate("login") {
-                            popUpTo(navController.graph.id) { inclusive = true }
+                        scope.launch {
+                            authRepository.logout()
+                            navController.navigate("welcome") {
+                                popUpTo(navController.graph.id) { inclusive = true }
+                            }
                         }
                     }
                 )

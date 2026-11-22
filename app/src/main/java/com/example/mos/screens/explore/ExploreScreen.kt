@@ -18,7 +18,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import com.example.mos.data.level
+import com.example.mos.ui.theme.Safe
+import com.example.mos.ui.theme.SafeContainer
+import com.example.mos.ui.theme.color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -177,12 +180,12 @@ fun ExploreScreen(
                     )
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = Color(0xFFD7F5E2)
+                        color = SafeContainer
                     ) {
                         Text(
                             text = "● Live Safety Updates",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF2DB864),
+                            color = Safe,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -268,11 +271,7 @@ fun ExploreScreen(
                     if (route.stops.size >= 2) {
                         val isSafest = route == uiState.routes.first()
                         val points = route.stops.map { LatLng(it.lat, it.lng) }
-                        val color = when {
-                            route.risk.overall < 0.15 -> Color(0xFF2DB864) // Safe green
-                            route.risk.overall <= 0.30 -> Color(0xFFF9AB00) // Caution amber
-                            else -> Color(0xFFD93025) // Risk red
-                        }
+                        val color = route.risk.level().color()
                         Polyline(
                             points = points,
                             color = color,
@@ -306,7 +305,7 @@ fun ExploreScreen(
                     ) {
                         Column {
                             Text(
-                                text = "Nairobi Safety Navigator",
+                                text = "MOS",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -614,19 +613,19 @@ fun RouteCardItem(
                 Text(
                     text = "Overall Risk: ${(route.risk.overall * 100).toInt()}%",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (route.risk.overall < 0.15) Color(0xFF2DB864) else Color(0xFFD93025)
+                    color = route.risk.level().color()
                 )
             }
 
             if (isSafest) {
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = Color(0xFF2DB864)
+                    color = Safe
                 ) {
                     Text(
                         text = "SAFEST",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }

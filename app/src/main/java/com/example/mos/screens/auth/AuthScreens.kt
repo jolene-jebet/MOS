@@ -2,6 +2,8 @@
 package com.example.mos.screens.auth
 
 import android.content.Context
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,7 +27,6 @@ import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Phone
-import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
@@ -52,12 +54,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
@@ -71,6 +76,37 @@ import kotlinx.coroutines.launch
 
 // ---------- Screens ----------
 
+// First screen for signed-out users: logo and tagline in the middle, buttons at the bottom.
+@Composable
+fun WelcomeScreen(onLogin: () -> Unit, onSignup: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            MosLogo(size = 140.dp)
+            Spacer(Modifier.height(24.dp))
+            Text(
+                "Move smart. Arrive safe.",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        PrimaryButton("Log in", loading = false, onClick = onLogin)
+        Spacer(Modifier.height(12.dp))
+        SecondaryButton("Sign up", onClick = onSignup)
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
 @Composable
 fun LoginScreen(viewModel: AuthViewModel, onLogin: () -> Unit, onGoToSignup: () -> Unit) {
     val state by viewModel.uiState.collectAsState()
@@ -78,8 +114,8 @@ fun LoginScreen(viewModel: AuthViewModel, onLogin: () -> Unit, onGoToSignup: () 
     var password by rememberSaveable { mutableStateOf("") }
 
     AuthPage {
-        ShieldLogo()
-        Title("Welcome back", "Sign in to keep navigating Nairobi safely")
+        MosLogo(size = 88.dp)
+        Title("Welcome back", "Log in to keep navigating Nairobi safely")
 
         FormCard {
             AuthTextField("Email", email, { email = it }, Icons.Rounded.Email, KeyboardType.Email)
@@ -87,7 +123,7 @@ fun LoginScreen(viewModel: AuthViewModel, onLogin: () -> Unit, onGoToSignup: () 
         }
 
         ErrorText(state.error)
-        PrimaryButton("Sign in", state.loading) { viewModel.login(email, password, onLogin) }
+        PrimaryButton("Log in", state.loading) { viewModel.login(email, password, onLogin) }
         OrDivider()
         GoogleButton(viewModel, onLogin)
 
@@ -106,7 +142,7 @@ fun SignupScreen(viewModel: AuthViewModel, onSignup: () -> Unit, onGoToLogin: ()
 
     AuthPage {
         SignupTopBar()
-        ShieldLogo()
+        MosLogo(size = 88.dp)
         Title("Create your account", "Join thousands navigating Nairobi safely")
 
         FormCard {
@@ -127,7 +163,7 @@ fun SignupScreen(viewModel: AuthViewModel, onSignup: () -> Unit, onGoToLogin: ()
         OrDivider()
         GoogleButton(viewModel, onSignup)
 
-        SwitchScreenLink("Already have an account?", "Sign in", onGoToLogin)
+        SwitchScreenLink("Already have an account?", "Log in", onGoToLogin)
         SecurityFooter()
     }
 }
@@ -157,7 +193,17 @@ private fun GoogleButton(viewModel: AuthViewModel, onSuccess: () -> Unit) {
         modifier = Modifier.fillMaxWidth().height(52.dp),
         shape = CircleShape
     ) {
-        Text("Continue with Google", style = MaterialTheme.typography.titleMedium)
+        Image(
+            painter = painterResource(R.drawable.ic_google_logo),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "Continue with Google",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -200,7 +246,7 @@ private fun AuthPage(content: @Composable () -> Unit) {
 private fun SignupTopBar() {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(
-            "Nairobi Safety Navigator",
+            "MOS",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary
         )
@@ -212,20 +258,20 @@ private fun SignupTopBar() {
     }
 }
 
+// The MOS logo: a green circle with "MOS" in white. Text scales with the circle.
 @Composable
-private fun ShieldLogo() {
+private fun MosLogo(size: Dp) {
     Box(
         modifier = Modifier
-            .padding(top = 24.dp)
-            .size(88.dp)
-            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+            .size(size)
+            .background(MaterialTheme.colorScheme.primary, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            Icons.Rounded.Shield,
-            contentDescription = "MOS logo",
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(44.dp)
+        Text(
+            "MOS",
+            color = MaterialTheme.colorScheme.onPrimary,
+            fontWeight = FontWeight.Bold,
+            fontSize = (size.value * 0.3f).sp
         )
     }
 }
@@ -340,6 +386,19 @@ private fun PrimaryButton(text: String, loading: Boolean, onClick: () -> Unit) {
         } else {
             Text(text, style = MaterialTheme.typography.titleMedium)
         }
+    }
+}
+
+// Outlined pill with green text, for the less important action.
+@Composable
+private fun SecondaryButton(text: String, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().height(52.dp),
+        shape = CircleShape,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+    ) {
+        Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     }
 }
 
