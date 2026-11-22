@@ -124,7 +124,7 @@ Pill with icon + label: Walk · Boda Boda · Matatu · Private.
 
 ## 6. Screens
 
-**MOS logo:** a `Primary` circle with "MOS" in bold white (`OnPrimary`). Used on Welcome, Login and Signup.
+**MOS logo:** a "3D coin": a circle with a diagonal gradient (light Primary top-left → `Primary` → `PrimaryDark` bottom-right), a soft `PrimaryDark` drop shadow, and "MOS" in bold white (`OnPrimary`) with a dark text shadow so the letters look raised. Used on Welcome (scales and fades in once, 600ms), Login and Signup (static).
 
 ### Welcome *(first screen when signed out)*
 - MOS logo centred on the screen, tagline "Move smart. Arrive safe." underneath (`titleMedium`, `TextSecondary`).

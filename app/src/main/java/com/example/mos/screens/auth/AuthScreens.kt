@@ -2,6 +2,8 @@
 package com.example.mos.screens.auth
 
 import android.content.Context
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -43,6 +45,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,9 +55,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -70,6 +80,7 @@ import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.example.mos.R
+import com.example.mos.ui.theme.PrimaryDark
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.launch
@@ -79,6 +90,15 @@ import kotlinx.coroutines.launch
 // First screen for signed-out users: logo and tagline in the middle, buttons at the bottom.
 @Composable
 fun WelcomeScreen(onLogin: () -> Unit, onSignup: () -> Unit) {
+    // Flips to true right after the first frame, which starts the logo's entrance animation.
+    var showLogo by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { showLogo = true }
+    val logoProgress by animateFloatAsState(
+        targetValue = if (showLogo) 1f else 0f,
+        animationSpec = tween(600),
+        label = "logoEntrance"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -91,7 +111,16 @@ fun WelcomeScreen(onLogin: () -> Unit, onSignup: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            MosLogo(size = 140.dp)
+            // Grows from 60% to full size while fading in. The space stays reserved, so the tagline doesn't jump.
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    scaleX = 0.6f + 0.4f * logoProgress
+                    scaleY = 0.6f + 0.4f * logoProgress
+                    alpha = logoProgress
+                }
+            ) {
+                MosLogo(size = 140.dp)
+            }
             Spacer(Modifier.height(24.dp))
             Text(
                 "Move smart. Arrive safe.",
@@ -258,20 +287,35 @@ private fun SignupTopBar() {
     }
 }
 
-// The MOS logo: a green circle with "MOS" in white. Text scales with the circle.
+// The MOS logo: a green "3D coin" with "MOS" in white. Everything scales with the circle.
 @Composable
 private fun MosLogo(size: Dp) {
+    val primary = MaterialTheme.colorScheme.primary
+    val highlight = lerp(primary, MaterialTheme.colorScheme.onPrimary, 0.25f)
+
     Box(
         modifier = Modifier
             .size(size)
-            .background(MaterialTheme.colorScheme.primary, CircleShape),
+            // Soft green shadow underneath, so the coin floats.
+            .shadow(
+                elevation = size * 0.1f,
+                shape = CircleShape,
+                ambientColor = PrimaryDark,
+                spotColor = PrimaryDark
+            )
+            // Lighter top-left, darker bottom-right: looks lit from above.
+            .background(Brush.linearGradient(listOf(highlight, primary, PrimaryDark)), CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Text(
             "MOS",
             color = MaterialTheme.colorScheme.onPrimary,
             fontWeight = FontWeight.Bold,
-            fontSize = (size.value * 0.3f).sp
+            fontSize = (size.value * 0.3f).sp,
+            // Dark shadow under the letters makes them look raised.
+            style = TextStyle(
+                shadow = Shadow(color = PrimaryDark, offset = Offset(0f, 4f), blurRadius = 8f)
+            )
         )
     }
 }
