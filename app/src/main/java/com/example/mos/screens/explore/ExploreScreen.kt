@@ -30,6 +30,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mos.data.AuthRepository
 import com.example.mos.data.Place
 import com.example.mos.data.RiskRepository
 import com.example.mos.data.Route
@@ -57,7 +58,8 @@ fun ExploreScreen(
     onRouteClick: (routeId: String) -> Unit,
     routeRepository: RouteRepository,
     riskRepository: RiskRepository,
-    viewModel: ExploreViewModel = rememberExploreViewModel(routeRepository, riskRepository)
+    authRepository: AuthRepository,
+    viewModel: ExploreViewModel = rememberExploreViewModel(routeRepository, riskRepository, authRepository)
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
@@ -480,13 +482,14 @@ fun ExploreScreen(
 @Composable
 private fun rememberExploreViewModel(
     routeRepository: RouteRepository,
-    riskRepository: RiskRepository
+    riskRepository: RiskRepository,
+    authRepository: AuthRepository
 ): ExploreViewModel {
     return viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return ExploreViewModel(routeRepository, riskRepository) as T
+                return ExploreViewModel(routeRepository, riskRepository, authRepository) as T
             }
         }
     )

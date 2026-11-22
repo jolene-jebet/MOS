@@ -3,6 +3,7 @@ package com.example.mos.screens.explore
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.mos.data.AuthRepository
 import com.example.mos.data.Place
 import com.example.mos.data.RiskRepository
 import com.example.mos.data.Route
@@ -35,7 +36,8 @@ data class ExploreUiState(
 
 class ExploreViewModel(
     private val routeRepository: RouteRepository,
-    private val riskRepository: RiskRepository
+    private val riskRepository: RiskRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ExploreUiState())
@@ -47,6 +49,14 @@ class ExploreViewModel(
 
     init {
         loadPresetPlaces()
+        loadDefaultMode()
+    }
+
+    // Starts Explore on the transport mode saved in the user's profile (if it loads).
+    private fun loadDefaultMode() {
+        viewModelScope.launch {
+            authRepository.getProfile().onSuccess { setTransportMode(it.defaultMode) }
+        }
     }
 
     private fun loadPresetPlaces() {

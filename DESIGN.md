@@ -161,17 +161,18 @@ MOS logo, "Welcome back", email + password fields, "Log in" PrimaryButton, "Cont
 7. **Stops Along Route:** StopsTimeline ("4 checkpoints").
 8. BottomNavBar.
 
-### Profile
-1. Top bar: back, "Profile", menu (⋮).
-2. Header: deep green gradient banner (Primary → PrimaryDark), avatar circle with initials ("JK") + verified badge, name, email, "Edit profile" outlined button.
-3. Stats row: Routes Taken (Primary) · Reports Filed (green) · Safety Points (red).
-4. Badge card: "Nairobi Route Guardian", "Trusted community contributor".
-5. **Saved Locations:** Home, Work, "+ Add a location".
-6. **Transport Preferences:** Default mode (Matatu), Avoid routes with (High theft risk, in red).
-7. **Notifications:** Safety alerts (toggle on), Incident updates (toggle off).
-8. **Account:** Change password, Privacy settings, Terms and privacy, Rate this app.
-9. DangerButton "Sign out".
-10. BottomNavBar.
+### Profile *(built)*
+1. Header: deep green gradient banner (Primary → PrimaryDark), logout icon (top-right, white), white avatar circle with initials ("JK"), name, email, "Edit profile" outlined white pill.
+2. **Details:** Phone, Email (icon tile + label + value).
+3. **Transport Preferences:** Default mode — Walk, Boda Boda or Car (default Car). Explore opens with this mode selected.
+4. **Account:** Change password (sends a reset email, then a "Check your email" pop-up; hidden for Google sign-in), Delete account (red, asks to confirm).
+5. DangerButton "Log out".
+6. BottomNavBar.
+
+Planned later (no data yet): stats row (Routes Taken · Reports Filed · Safety Points), badge card, Saved Locations, Notifications toggles, Privacy / Terms / Rate this app.
+
+### Edit profile
+Back arrow + "Edit profile". Fields: Full name, Phone (+254), Email (read-only). "Default transport mode" sliding pill picker (Walk · Boda Boda · Car): a green Primary pill glides behind the selected option. Profile offers only these three; Explore still has all four modes. "Save changes" PrimaryButton. Saving updates Firestore `users/{uid}` and the Firebase display name.
 
 ---
 

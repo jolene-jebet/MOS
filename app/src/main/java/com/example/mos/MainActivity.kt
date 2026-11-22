@@ -40,7 +40,10 @@ import com.example.mos.screens.auth.LoginScreen
 import com.example.mos.screens.auth.SignupScreen
 import com.example.mos.screens.auth.WelcomeScreen
 import com.example.mos.screens.explore.ExploreScreen
+import com.example.mos.screens.profile.EditProfileScreen
+import com.example.mos.screens.profile.EditProfileViewModel
 import com.example.mos.screens.profile.ProfileScreen
+import com.example.mos.screens.profile.ProfileViewModel
 import com.example.mos.screens.routedetail.RouteDetailScreen
 import com.example.mos.screens.routedetail.RouteDetailViewModel
 import com.example.mos.ui.theme.MOSTheme
@@ -146,7 +149,8 @@ fun MOSApp(
                 ExploreScreen(
                     onRouteClick = { routeId -> navController.navigate("routedetail/$routeId") },
                     routeRepository = routeRepository,
-                    riskRepository = riskRepository
+                    riskRepository = riskRepository,
+                    authRepository = authRepository
                 )
             }
             composable("routedetail/{routeId}") { entry ->
@@ -168,15 +172,29 @@ fun MOSApp(
                 )
             }
             composable("profile") {
+                // After logging out or deleting the account, start again at Welcome.
+                val goToWelcome = {
+                    navController.navigate("welcome") {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
                 ProfileScreen(
+                    viewModel = viewModel { ProfileViewModel(authRepository) },
+                    onEditProfile = { navController.navigate("editprofile") },
                     onSignOut = {
                         scope.launch {
                             authRepository.logout()
-                            navController.navigate("welcome") {
-                                popUpTo(navController.graph.id) { inclusive = true }
-                            }
+                            goToWelcome()
                         }
-                    }
+                    },
+                    onAccountDeleted = goToWelcome
+                )
+            }
+            composable("editprofile") {
+                EditProfileScreen(
+                    viewModel = viewModel { EditProfileViewModel(authRepository) },
+                    onBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() }
                 )
             }
         }

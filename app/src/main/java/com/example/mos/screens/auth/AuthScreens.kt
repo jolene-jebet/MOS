@@ -4,7 +4,6 @@ package com.example.mos.screens.auth
 import android.content.Context
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,8 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Email
@@ -31,10 +28,6 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,8 +35,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -61,14 +52,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -80,6 +68,11 @@ import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.example.mos.R
+import com.example.mos.ui.ErrorText
+import com.example.mos.ui.PillTextField
+import com.example.mos.ui.PrimaryButton
+import com.example.mos.ui.SecondaryButton
+import com.example.mos.ui.SectionCard
 import com.example.mos.ui.theme.PrimaryDark
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -146,8 +139,8 @@ fun LoginScreen(viewModel: AuthViewModel, onLogin: () -> Unit, onGoToSignup: () 
         MosLogo(size = 88.dp)
         Title("Welcome back", "Log in to keep navigating Nairobi safely")
 
-        FormCard {
-            AuthTextField("Email", email, { email = it }, Icons.Rounded.Email, KeyboardType.Email)
+        SectionCard {
+            PillTextField("Email", email, { email = it }, Icons.Rounded.Email, KeyboardType.Email)
             PasswordField("Password", password) { password = it }
         }
 
@@ -174,10 +167,10 @@ fun SignupScreen(viewModel: AuthViewModel, onSignup: () -> Unit, onGoToLogin: ()
         MosLogo(size = 88.dp)
         Title("Create your account", "Join thousands navigating Nairobi safely")
 
-        FormCard {
-            AuthTextField("Full name", name, { name = it }, Icons.Rounded.Person)
-            AuthTextField("Email", email, { email = it }, Icons.Rounded.Email, KeyboardType.Email)
-            AuthTextField(
+        SectionCard {
+            PillTextField("Full name", name, { name = it }, Icons.Rounded.Person)
+            PillTextField("Email", email, { email = it }, Icons.Rounded.Email, KeyboardType.Email)
+            PillTextField(
                 "Phone", phone, { phone = it }, Icons.Rounded.Phone, KeyboardType.Phone,
                 prefix = "+254 "
             )
@@ -334,59 +327,10 @@ private fun Title(title: String, subtitle: String) {
 }
 
 @Composable
-private fun FormCard(content: @Composable () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = CardDefaults.outlinedCardBorder()
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            content()
-        }
-    }
-}
-
-// Pill text field with the label above it, as in DESIGN.md.
-@Composable
-private fun AuthTextField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    icon: ImageVector,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    prefix: String? = null,
-    isPassword: Boolean = false,
-    trailing: @Composable (() -> Unit)? = null
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, style = MaterialTheme.typography.bodySmall)
-        TextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = CircleShape,
-            leadingIcon = { Icon(icon, contentDescription = null) },
-            trailingIcon = trailing,
-            prefix = prefix?.let { { Text(it) } },
-            visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                focusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant,
-                unfocusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        )
-    }
-}
-
-@Composable
 private fun PasswordField(label: String, value: String, onValueChange: (String) -> Unit) {
     var visible by remember { mutableStateOf(false) }
 
-    AuthTextField(
+    PillTextField(
         label, value, onValueChange, Icons.Rounded.Lock, KeyboardType.Password,
         isPassword = !visible,
         trailing = {
@@ -398,52 +342,6 @@ private fun PasswordField(label: String, value: String, onValueChange: (String) 
             }
         }
     )
-}
-
-@Composable
-private fun ErrorText(error: String?) {
-    if (error != null) {
-        Text(
-            error,
-            color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@Composable
-private fun PrimaryButton(text: String, loading: Boolean, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        enabled = !loading,
-        modifier = Modifier.fillMaxWidth().height(52.dp),
-        shape = CircleShape
-    ) {
-        if (loading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(22.dp),
-                color = MaterialTheme.colorScheme.onPrimary,
-                strokeWidth = 2.dp
-            )
-        } else {
-            Text(text, style = MaterialTheme.typography.titleMedium)
-        }
-    }
-}
-
-// Outlined pill with green text, for the less important action.
-@Composable
-private fun SecondaryButton(text: String, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(52.dp),
-        shape = CircleShape,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-    ) {
-        Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-    }
 }
 
 @Composable
