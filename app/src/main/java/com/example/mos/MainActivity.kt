@@ -34,6 +34,7 @@ import com.example.mos.data.FakeRouteRepository
 import com.example.mos.data.GoogleRouteRepository
 import com.example.mos.data.RiskRepository
 import com.example.mos.data.RouteRepository
+import com.example.mos.screens.auth.AuthViewModel
 import com.example.mos.screens.auth.LoginScreen
 import com.example.mos.screens.auth.SignupScreen
 import com.example.mos.screens.explore.ExploreScreen
@@ -109,6 +110,7 @@ fun MOSApp(
         ) {
             composable("login") {
                 LoginScreen(
+                    viewModel = viewModel { AuthViewModel(authRepository) },
                     onLogin = {
                         navController.navigate("explore") {
                             popUpTo(navController.graph.id) { inclusive = true }
@@ -119,6 +121,7 @@ fun MOSApp(
             }
             composable("signup") {
                 SignupScreen(
+                    viewModel = viewModel { AuthViewModel(authRepository) },
                     onSignup = {
                         navController.navigate("explore") {
                             popUpTo(navController.graph.id) { inclusive = true }
