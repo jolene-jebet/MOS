@@ -28,7 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.mos.data.AuthRepository
-import com.example.mos.data.FakeAuthRepository
+import com.example.mos.data.FirebaseAuthRepository
 import com.example.mos.data.FakeRiskRepository
 import com.example.mos.data.FakeRouteRepository
 import com.example.mos.data.GoogleRouteRepository
@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
 
     // Repositories are created by hand here (no Hilt).
     // TODO: swap the Fake ones for real ones and pass them to the ViewModels.
-    private val authRepository: AuthRepository = FakeAuthRepository()
+    private val authRepository: AuthRepository by lazy { FirebaseAuthRepository() }
     private val routeRepository: RouteRepository by lazy { GoogleRouteRepository(applicationContext, FakeRouteRepository()) }
     private val riskRepository: RiskRepository by lazy { FakeRiskRepository(applicationContext)}
 
