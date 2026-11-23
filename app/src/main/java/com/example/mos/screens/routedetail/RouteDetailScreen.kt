@@ -111,7 +111,7 @@ private fun RouteDetailContent(route: Route, risk: Risk, modifier: Modifier = Mo
         item { EtaCard(route = route, risk = risk) }
         item { SafetyBreakdownSection(risk = risk) }
         item { ActiveIncidentsSection(incidents = route.incidents) }
-        item { StopsSection(stops = route.stops) }
+        item { StopsSection(stops = route.stops, namedStops = route.namedStops) }
     }
 }
 
@@ -175,15 +175,15 @@ private fun ActiveIncidentsSection(incidents: List<Incident>) {
 }
 
 @Composable
-private fun StopsSection(stops: List<Stop>) {
+private fun StopsSection(stops: List<Stop>, namedStops: List<Stop>) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(title = "Stops Along Route")
-        // Google routes decode to raw polyline points named "Waypoint" — not real checkpoints.
-        val namedStops = stops.filter { it.name != "Waypoint" }
-        val displayStops = if (namedStops.isEmpty()) {
-            listOf(Stop(name = "Start"), Stop(name = "Destination"))
-        } else {
-            namedStops
+        // Prefer origin → user stops → destination. Otherwise skip raw polyline points named "Waypoint".
+        val filteredStops = stops.filter { it.name != "Waypoint" }
+        val displayStops = when {
+            namedStops.isNotEmpty() -> namedStops
+            filteredStops.isNotEmpty() -> filteredStops
+            else -> listOf(Stop(name = "Start"), Stop(name = "Destination"))
         }
         StopsTimeline(stops = displayStops)
     }

@@ -53,7 +53,7 @@ MOS/
 
 ## AI CONTRACT
 
-- Endpoint: `POST /predict` (base URL in `data/RiskApi.kt`, currently `http://10.0.2.2:8000/` for the emulator).
+- Endpoint: `POST /predict` (base URL is `RISK_API_BASE_URL` in `data/RiskApi.kt`, currently the Render server `https://semproject-mlengine-render.onrender.com/`). For a local server on the emulator use `http://10.0.2.2:8000/`.
 - Request:
   ```json
   { "coordinates": [[lat, lng], ...], "mode": "MATATU", "hour": 17 }
