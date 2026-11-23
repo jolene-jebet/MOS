@@ -41,6 +41,12 @@ import com.example.mos.screens.profile.ProfileScreen
 import com.example.mos.screens.routedetail.RouteDetailScreen
 import com.example.mos.screens.routedetail.RouteDetailViewModel
 import com.example.mos.ui.theme.MOSTheme
+import androidx.lifecycle.lifecycleScope
+import com.example.mos.data.RemoteRiskRepository
+import com.example.mos.data.RiskApiService
+import com.example.mos.data.createRiskApiService
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -48,11 +54,18 @@ class MainActivity : ComponentActivity() {
     // TODO: swap the Fake ones for real ones and pass them to the ViewModels.
     private val authRepository: AuthRepository = FakeAuthRepository()
     private val routeRepository: RouteRepository by lazy { GoogleRouteRepository(applicationContext, FakeRouteRepository()) }
-    private val riskRepository: RiskRepository by lazy { FakeRiskRepository(applicationContext)}
+    //private val riskRepository: RiskRepository by lazy { FakeRiskRepository(applicationContext)}
+    private val riskApi: RiskApiService by lazy { createRiskApiService() }
+    private val riskRepository: RiskRepository by lazy { RemoteRiskRepository(riskApi) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        lifecycleScope.launch {
+            try { riskApi.health() }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { }
+        }
         setContent {
             MOSTheme {
                 MOSApp(

@@ -4,6 +4,7 @@ package com.example.mos.screens.explore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mos.data.Place
+import com.example.mos.data.RemoteRiskRepository
 import com.example.mos.data.RiskRepository
 import com.example.mos.data.Route
 import com.example.mos.data.RouteRepository
@@ -30,7 +31,8 @@ data class ExploreUiState(
     val isLoading: Boolean = false,
     val isSearchingOrigin: Boolean = false,
     val isSearchingDestination: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isCloudRiskActive: Boolean = false
 )
 
 class ExploreViewModel(
@@ -38,7 +40,9 @@ class ExploreViewModel(
     private val riskRepository: RiskRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ExploreUiState())
+    private val _uiState = MutableStateFlow(ExploreUiState(
+        isCloudRiskActive = riskRepository is RemoteRiskRepository
+    ))
     val uiState: StateFlow<ExploreUiState> = _uiState.asStateFlow()
 
     private var originSearchJob: Job? = null
@@ -46,6 +50,8 @@ class ExploreViewModel(
     private var routesJob: Job? = null
 
     init {
+        val isCloud = riskRepository is RemoteRiskRepository
+        _uiState.update { it.copy(isCloudRiskActive = isCloud) }
         loadPresetPlaces()
     }
 
