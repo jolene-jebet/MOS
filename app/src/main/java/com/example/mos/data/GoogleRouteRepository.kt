@@ -32,6 +32,7 @@ data class GoogleWaypoint(val location: GoogleLocation)
 data class ComputeRoutesRequest(
     val origin: GoogleWaypoint,
     val destination: GoogleWaypoint,
+    val intermediates: List<GoogleWaypoint>? = null,
     val travelMode: String, // "DRIVE" or "WALK"
     val computeAlternativeRoutes: Boolean = true
 )
@@ -170,10 +171,11 @@ class GoogleRouteRepository(
     // Last routes fetched, so Route Detail can find them by id.
     private val routeCache = ConcurrentHashMap<String, Route>()
 
-    override suspend fun getRoutes(from: Place, to: Place, mode: TransportMode): List<Route> {
+    override suspend fun getRoutes(from: Place, to: Place, mode: TransportMode, waypoints: List<Place>): List<Route> {
         val request = ComputeRoutesRequest(
             origin = from.toWaypoint(),
             destination = to.toWaypoint(),
+            intermediates = if (waypoints.isNotEmpty()) waypoints.map { it.toWaypoint() } else null,
             // Guide: Boda, Matatu and Private use the driving profile.
             travelMode = if (mode == TransportMode.WALK) "WALK" else "DRIVE"
         )
