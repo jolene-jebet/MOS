@@ -3,8 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    // TODO: enable Firebase
-    // alias(libs.plugins.google.services)
+    alias(libs.plugins.google.services)
 }
 
 val localProperties = Properties().apply {
@@ -81,9 +80,16 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.compose.material.icons.extended)
 
-    // TODO: enable Firebase
-    // implementation(platform(libs.firebase.bom))
-    // implementation(libs.firebase.auth)
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.kotlinx.coroutines.play.services)
+
+    // Google sign-in
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

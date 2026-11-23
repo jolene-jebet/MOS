@@ -18,7 +18,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -28,7 +27,14 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mos.data.AuthRepository
 import com.example.mos.data.Place
+import com.example.mos.data.level
+import com.example.mos.ui.theme.Caution
+import com.example.mos.ui.theme.CautionContainer
+import com.example.mos.ui.theme.Safe
+import com.example.mos.ui.theme.SafeContainer
+import com.example.mos.ui.theme.color
 import com.example.mos.data.RiskRepository
 import com.example.mos.data.Route
 import com.example.mos.data.RouteRepository
@@ -69,7 +75,8 @@ fun ExploreScreen(
     onRouteClick: (routeId: String) -> Unit,
     routeRepository: RouteRepository,
     riskRepository: RiskRepository,
-    viewModel: ExploreViewModel = rememberExploreViewModel(routeRepository, riskRepository)
+    authRepository: AuthRepository,
+    viewModel: ExploreViewModel = rememberExploreViewModel(routeRepository, riskRepository, authRepository)
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
@@ -195,12 +202,12 @@ fun ExploreScreen(
                         )
                         Surface(
                             shape = RoundedCornerShape(50),
-                            color = if (uiState.isCloudRiskActive) Color(0xFFD7F5E2) else Color(0xFFFFF3CD)
+                            color = if (uiState.isCloudRiskActive) SafeContainer else CautionContainer
                         ) {
                             Text(
                                 text = if (uiState.isCloudRiskActive) "● Cloud Risk AI" else "● Offline / Fake Risk",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (uiState.isCloudRiskActive) Color(0xFF2DB864) else Color(0xFF856404),
+                                color = if (uiState.isCloudRiskActive) Safe else Caution,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -297,11 +304,7 @@ fun ExploreScreen(
                             val routeIndex = uiState.routes.indexOf(route)
                             val points = route.stops.map { LatLng(it.lat, it.lng) }
 
-                            val baseColor = when {
-                                route.risk.overall < 0.15 -> Color(0xFF2DB864) // Safe green
-                                route.risk.overall <= 0.30 -> Color(0xFFF9AB00) // Caution amber
-                                else -> Color(0xFFD93025) // Risk red
-                            }
+                            val baseColor = route.risk.level().color()
 
                             // Intensity / Shade calculation based on route index:
                             // Index 0: 100% full bright intensity, 18f width
@@ -356,7 +359,7 @@ fun ExploreScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = "Nairobi Safety Navigator",
+                                    text = "MOS",
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -584,13 +587,14 @@ fun ExploreScreen(
 @Composable
 private fun rememberExploreViewModel(
     routeRepository: RouteRepository,
-    riskRepository: RiskRepository
+    riskRepository: RiskRepository,
+    authRepository: AuthRepository
 ): ExploreViewModel {
     return viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return ExploreViewModel(routeRepository, riskRepository) as T
+                return ExploreViewModel(routeRepository, riskRepository, authRepository) as T
             }
         }
     )
@@ -717,19 +721,19 @@ fun RouteCardItem(
                 Text(
                     text = "Overall Risk: ${(route.risk.overall * 100).toInt()}%",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (route.risk.overall < 0.15) Color(0xFF2DB864) else Color(0xFFD93025)
+                    color = route.risk.level().color()
                 )
             }
 
             if (isSafest) {
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = Color(0xFF2DB864)
+                    color = Safe
                 ) {
                     Text(
                         text = "SAFEST",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }

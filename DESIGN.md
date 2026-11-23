@@ -118,27 +118,33 @@ Pill with icon + label: Walk · Boda Boda · Matatu · Private.
 | **TextField** | Pill, `SurfaceVariant` fill, no border, leading icon, label above the field (`bodySmall`). Password fields have an eye toggle. |
 | **MapAlertPopup** | White card on the map: red warning icon, bold title, red risk text, "Reported 4m ago by 18 commuters". |
 | **MapLegend** | "● Safe ● Caution ● Risk" in the bottom-left corner of the map. |
-| **BottomNavBar** | 2 items: **Explore** (compass) · **Profile** (person). Active = `Primary`. |
+| **BottomNavBar** | 2 items: **Explore** (map) · **Profile** (person). Outlined icons, filled when active. Green (`Primary`) bar with 24dp rounded top corners and a soft shadow; selected tab = `Primary` icon on a `PrimaryContainer` pill with a white label, unselected = white at 70%. |
 
 ---
 
 ## 6. Screens
 
+**MOS logo:** a "3D coin": a circle with a diagonal gradient (light Primary top-left → `Primary` → `PrimaryDark` bottom-right), a soft `PrimaryDark` drop shadow, and "MOS" in bold white (`OnPrimary`) with a dark text shadow so the letters look raised. Used on Welcome (scales and fades in once, 600ms), Login and Signup (static).
+
+### Welcome *(first screen when signed out)*
+- MOS logo centred on the screen, tagline "Move smart. Arrive safe." underneath (`titleMedium`, `TextSecondary`).
+- At the bottom: "Log in" PrimaryButton and "Sign up" outlined pill button (Primary border and text).
+
 ### Login *(no mockup: mirror Signup)*
-Shield logo, "Welcome back", email + password fields, "Sign in" PrimaryButton, "Don't have an account? **Sign up**".
+MOS logo, "Welcome back", email + password fields, "Log in" PrimaryButton, "Continue with Google" button (Google "G" logo), "Don't have an account? **Sign up**".
 
 ### Signup
-- Small top bar: "Nairobi Safety Navigator / SIGNUP".
-- Centred shield logo in a PrimaryContainer circle with a green check badge.
+- Small top bar: "MOS / SIGNUP".
+- Centred MOS logo.
 - "Create your account" + subtitle "Join thousands navigating Nairobi safely".
 - White card with fields: Full name, Email, Phone (+254 country picker), Create password, Confirm password.
-- "Create account" PrimaryButton.
-- "Already have an account? **Sign in**".
+- "Create account" PrimaryButton, then "Continue with Google" button (Google "G" logo).
+- "Already have an account? **Log in**".
 - Footer: lock icon + "End-to-end encrypted safety geolocation".
 
 ### Explore (Map Navigation)
 1. Top bar: shield icon, "Map Navigation", profile avatar button.
-2. App title "Nairobi Safety Navigator" (Primary, bold) + "● LIVE RADAR" chip.
+2. App title "MOS" (Primary, bold) + "● LIVE RADAR" chip.
 3. LocationCard (with "GPS Safe" chip and area label "Nairobi NW").
 4. ModeChip row.
 5. Map: coloured route lines (green/amber/red), destination pin, MapAlertPopup, MapLegend, locate-me and layers buttons on the right.
@@ -155,17 +161,18 @@ Shield logo, "Welcome back", email + password fields, "Sign in" PrimaryButton, "
 7. **Stops Along Route:** StopsTimeline ("4 checkpoints").
 8. BottomNavBar.
 
-### Profile
-1. Top bar: back, "Profile", menu (⋮).
-2. Header: deep green gradient banner (Primary → PrimaryDark), avatar circle with initials ("JK") + verified badge, name, email, "Edit profile" outlined button.
-3. Stats row: Routes Taken (Primary) · Reports Filed (green) · Safety Points (red).
-4. Badge card: "Nairobi Route Guardian", "Trusted community contributor".
-5. **Saved Locations:** Home, Work, "+ Add a location".
-6. **Transport Preferences:** Default mode (Matatu), Avoid routes with (High theft risk, in red).
-7. **Notifications:** Safety alerts (toggle on), Incident updates (toggle off).
-8. **Account:** Change password, Privacy settings, Terms and privacy, Rate this app.
-9. DangerButton "Sign out".
-10. BottomNavBar.
+### Profile *(built)*
+1. Header: deep green gradient banner (Primary → PrimaryDark), logout icon (top-right, white), white avatar circle with initials ("JK"), name, email, "Edit profile" outlined white pill.
+2. **Details:** Phone, Email (icon tile + label + value).
+3. **Transport Preferences:** Default mode — Walk, Boda Boda or Car (default Car). Explore opens with this mode selected.
+4. **Account:** Change password (sends a reset email, then a "Check your email" pop-up; hidden for Google sign-in), Delete account (red, asks to confirm).
+5. DangerButton "Log out".
+6. BottomNavBar.
+
+Planned later (no data yet): stats row (Routes Taken · Reports Filed · Safety Points), badge card, Saved Locations, Notifications toggles, Privacy / Terms / Rate this app.
+
+### Edit profile
+Back arrow + "Edit profile". Fields: Full name, Phone (+254), Email (read-only). "Default transport mode" sliding pill picker (Walk · Boda Boda · Car): a green Primary pill glides behind the selected option. Profile offers only these three; Explore still has all four modes. "Save changes" PrimaryButton. Saving updates Firestore `users/{uid}` and the Firebase display name.
 
 ---
 
