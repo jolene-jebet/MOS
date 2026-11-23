@@ -18,8 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Brightness2
-import androidx.compose.material.icons.filled.Opacity
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
@@ -151,9 +150,8 @@ private fun SafetyBreakdownSection(risk: Risk) {
         // A's RiskBar (ui/Components.kt) — currently an empty TODO, renders nothing yet.
         RiskBar(risk = risk)
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            RiskFactorRow(icon = Icons.Default.Info, label = "Overall Risk", value = risk.overall)
             RiskFactorRow(icon = Icons.Default.Warning, label = "Accident Risk", value = risk.accident)
-            RiskFactorRow(icon = Icons.Default.Opacity, label = "Flooding Risk", value = risk.flooding)
-            RiskFactorRow(icon = Icons.Default.Brightness2, label = "Lighting (Night Safety)", value = risk.lighting)
         }
     }
 }
