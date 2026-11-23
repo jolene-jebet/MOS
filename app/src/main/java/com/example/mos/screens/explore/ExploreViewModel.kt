@@ -4,6 +4,7 @@ package com.example.mos.screens.explore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mos.data.Place
+import com.example.mos.data.RemoteRiskRepository
 import com.example.mos.data.RiskRepository
 import com.example.mos.data.Route
 import com.example.mos.data.RouteRepository
@@ -16,6 +17,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 data class ExploreUiState(
     val routes: List<Route> = emptyList(),
@@ -30,7 +34,8 @@ data class ExploreUiState(
     val isLoading: Boolean = false,
     val isSearchingOrigin: Boolean = false,
     val isSearchingDestination: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isCloudRiskActive: Boolean = false
 )
 
 class ExploreViewModel(
@@ -38,7 +43,9 @@ class ExploreViewModel(
     private val riskRepository: RiskRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ExploreUiState())
+    private val _uiState = MutableStateFlow(ExploreUiState(
+        isCloudRiskActive = riskRepository is RemoteRiskRepository
+    ))
     val uiState: StateFlow<ExploreUiState> = _uiState.asStateFlow()
 
     private var originSearchJob: Job? = null
@@ -46,6 +53,8 @@ class ExploreViewModel(
     private var routesJob: Job? = null
 
     init {
+        val isCloud = riskRepository is RemoteRiskRepository
+        _uiState.update { it.copy(isCloudRiskActive = isCloud) }
         loadPresetPlaces()
     }
 
@@ -143,12 +152,15 @@ class ExploreViewModel(
                         )
                     }
                 } else {
+                    // Ask the risk model about every route, then rank safest first.
+                    val scoredRoutes = coroutineScope {
+                        fetchedRoutes
+                            .map { route -> async { route.copy(risk = riskRepository.getRisk(route, route.mode)) } }
+                            .awaitAll()
+                    }.sortedBy { it.risk.overall }
+
                     _uiState.update {
-                        it.copy(
-                            routes = fetchedRoutes,
-                            isLoading = false,
-                            errorMessage = null
-                        )
+                        it.copy(routes = scoredRoutes, isLoading = false, errorMessage = null)
                     }
                 }
             } catch (e: CancellationException) {
