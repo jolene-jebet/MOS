@@ -48,21 +48,22 @@ MOS/
     - `FakeAuthRepository` → `FirebaseAuthRepository`
     - `FakeRouteRepository` → Google Directions API
 - **`RiskRepository` is the only place the AI connects.**
-- `fake_data.json` must match the agreed AI response shape: `{ overall, accident, flooding, lighting }` (percentages).
+- `fake_data.json` must match the agreed AI response shape: `{ overall, accident }` (0–1). `flooding` and `lighting` are not predicted; they stay in the data only for compatibility.
 - The "Safest route" is always shown first, regardless of travel time.
 
 ## AI CONTRACT
 
-- Endpoint: `POST /predict` (base URL in `data/RiskApi.kt`, currently `http://10.0.2.2:8000/` for the emulator).
+- Endpoint: `POST /predict` (base URL is `RISK_API_BASE_URL` in `data/RiskApi.kt`, currently the Render server `https://semproject-mlengine-render.onrender.com/`). For a local server on the emulator use `http://10.0.2.2:8000/`.
 - Request:
   ```json
   { "coordinates": [[lat, lng], ...], "mode": "MATATU", "hour": 17 }
   ```
   `coordinates` come from the route's stops, `mode` is `TransportMode.name`, `hour` is the current hour (0–23).
-- Response (all values 0–1):
+- Response (both values 0–1):
   ```json
-  { "overall": 0.12, "accident": 0.10, "flooding": 0.05, "lighting": 0.15 }
+  { "overall": 0.12, "accident": 0.10 }
   ```
+- `flooding` and `lighting` are **not predicted** by the model. They are kept in `Risk`, `RiskPredictResponse` and `fake_data.json` only for compatibility and are not shown in the app.
 
 ## SECRETS
 

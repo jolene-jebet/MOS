@@ -156,7 +156,7 @@ MOS logo, "Welcome back", email + password fields, "Log in" PrimaryButton, "Cont
 2. Map preview with chips ("Via Ngong Road", "Fastest route").
 3. Summary row: Current location · distance · destination.
 4. ETA card: "24 min" + "On schedule" (green), distance, "Safest" chip + "12% risk" chip.
-5. **Safety Breakdown:** overall risk score ("Low — 12%"), segmented RiskBar, then RiskFactorRows for Accident, Flooding and Lighting (night safety).
+5. **Safety Breakdown:** overall risk score ("Low — 12%"), segmented RiskBar, then RiskFactorRows for Overall and Accident only.
 6. **Active Incidents Nearby:** IncidentCards.
 7. **Stops Along Route:** StopsTimeline ("4 checkpoints").
 8. BottomNavBar.

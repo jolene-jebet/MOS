@@ -11,7 +11,7 @@ data class FakeDataRoot(
 )
 
 interface RouteRepository {
-    suspend fun getRoutes(from: Place, to: Place, mode: TransportMode): List<Route>
+    suspend fun getRoutes(from: Place, to: Place, mode: TransportMode, waypoints: List<Place> = emptyList()): List<Route>
     suspend fun getRoute(routeId: String): Route?
     suspend fun getPlaces(): List<Place>
     suspend fun searchPlaces(query: String): List<Place>
@@ -100,7 +100,7 @@ class FakeRouteRepository(private val context: Context? = null) : RouteRepositor
         }
     }
 
-    override suspend fun getRoutes(from: Place, to: Place, mode: TransportMode): List<Route> {
+    override suspend fun getRoutes(from: Place, to: Place, mode: TransportMode, waypoints: List<Place>): List<Route> {
         val root = loadRoot()
         val routes = if (root != null && root.routes.isNotEmpty() && root.routes.any { it.name != "TODO" }) {
             root.routes

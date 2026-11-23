@@ -69,3 +69,23 @@
     - A new route request cancels the old one.
 - Google Cloud setup: enable **Places API (New)** and **Routes API**, and allow both on the key.
 - Debugging: filter Logcat by `MOS-Google` to see Google's exact error.
+
+# Connecting the mobile app to the cloud AI model
+1. **Overview and full working copy.** Asked for an overview of what Person C was meant to do from the Guide, especially connecting the final model to the app, and for a full working copy of that output to send to another agent.
+2. **Taking over Person C's work.** Said Person C could not do their part, so I was helping. Attached the model notebook, the earlier agent output and the Guide PDF (a possible working solution from scratch to working). Noted we had moved from OSM to Google Maps, and asked that anything suggested use Google Maps.
+3. **Single comprehensive guide.** Asked for one step-by-step guide that does not send me to multiple files.
+4. **Grid rounding question.** Gave Nairobi's approximate coordinates (about -1.2833 to -1.2921 lat, 36.8167 to 36.8219 lng) and asked what the likely issue is, given the model rounds to 1 decimal place.
+5. **Results after the change.** Attached the updated notebook, now rounding to 2 decimal places, and asked for the results explained and what to do next.
+6. **Server abort.** Shared a screenshot of `uvicorn main:app` printing "Aborted!" even though the scikit-learn and joblib versions matched.
+7. **Prompt-history summary.** Asked for a summary of what we had done, to paste into my prompt-list file, then asked for it as markdown. Then clarified that I wanted a summary of my prompts, not of the work.
+9. **App shows fake data.** Reported that the app still showed the old fake data after switching it to the cloud model.
+10. **First Logcat.** Attached a Logcat file containing errors.
+11. **Second Logcat.** Attached a larger Logcat export ("that is what I got").
+12. **Third Logcat.** Attached another Logcat export, after adding the extra logging suggested.
+13. **Render logs.** Shared a screenshot of the server logs showing only health checks, and said the remote risk request never happened.
+14. **Source files and test result.** Attached the app's source files (risk, route and Explore code), a Render log screenshot showing `POST /predict 200 OK`, and the Logcat line `TEST predict OK`.
+15. **This request.** Asked for a summary of all my prompts for my AI-use declaration.
+
+# Adding stops between routes
+- create a new feature that allows me to enter a stop in between my start and final destinations
+- Make it such that the different routes have different shades of intensity depending on the index, so that the first one is like a strong brightness, second one a bit duller and the third option even more dull and so on and so forth. This is to make it such that teh different routes have different shades rather than all of them just coming out as green and you can't tell the difference between anything.

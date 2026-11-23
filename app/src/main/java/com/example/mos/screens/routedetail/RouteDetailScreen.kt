@@ -18,8 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Brightness2
-import androidx.compose.material.icons.filled.Opacity
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
@@ -112,7 +111,7 @@ private fun RouteDetailContent(route: Route, risk: Risk, modifier: Modifier = Mo
         item { EtaCard(route = route, risk = risk) }
         item { SafetyBreakdownSection(risk = risk) }
         item { ActiveIncidentsSection(incidents = route.incidents) }
-        item { StopsSection(stops = route.stops) }
+        item { StopsSection(stops = route.stops, namedStops = route.namedStops) }
     }
 }
 
@@ -151,9 +150,8 @@ private fun SafetyBreakdownSection(risk: Risk) {
         // A's RiskBar (ui/Components.kt) — currently an empty TODO, renders nothing yet.
         RiskBar(risk = risk)
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            RiskFactorRow(icon = Icons.Default.Info, label = "Overall Risk", value = risk.overall)
             RiskFactorRow(icon = Icons.Default.Warning, label = "Accident Risk", value = risk.accident)
-            RiskFactorRow(icon = Icons.Default.Opacity, label = "Flooding Risk", value = risk.flooding)
-            RiskFactorRow(icon = Icons.Default.Brightness2, label = "Lighting (Night Safety)", value = risk.lighting)
         }
     }
 }
@@ -177,15 +175,15 @@ private fun ActiveIncidentsSection(incidents: List<Incident>) {
 }
 
 @Composable
-private fun StopsSection(stops: List<Stop>) {
+private fun StopsSection(stops: List<Stop>, namedStops: List<Stop>) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(title = "Stops Along Route")
-        // Google routes decode to raw polyline points named "Waypoint" — not real checkpoints.
-        val namedStops = stops.filter { it.name != "Waypoint" }
-        val displayStops = if (namedStops.isEmpty()) {
-            listOf(Stop(name = "Start"), Stop(name = "Destination"))
-        } else {
-            namedStops
+        // Prefer origin → user stops → destination. Otherwise skip raw polyline points named "Waypoint".
+        val filteredStops = stops.filter { it.name != "Waypoint" }
+        val displayStops = when {
+            namedStops.isNotEmpty() -> namedStops
+            filteredStops.isNotEmpty() -> filteredStops
+            else -> listOf(Stop(name = "Start"), Stop(name = "Destination"))
         }
         StopsTimeline(stops = displayStops)
     }

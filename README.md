@@ -56,7 +56,7 @@ Navigation routes: `login`, `signup`, `explore`, `routedetail/{routeId}`, `profi
 ### fake_data.json
 
 Top-level keys: `routes`, `incidents`, `places`. Each route has a `risk` object:
-`{ overall, accident, flooding, lighting }`.
+`{ overall, accident }` (0–1). `flooding` and `lighting` are not predicted; they stay in the data only for compatibility.
 
 ## Who owns what
 

@@ -8,6 +8,7 @@ import com.example.mos.data.Risk
 import com.example.mos.data.RiskRepository
 import com.example.mos.data.Route
 import com.example.mos.data.RouteRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,7 +43,13 @@ class RouteDetailViewModel(
                 _uiState.value = RouteDetailUiState.Error("Route not found.")
                 return@launch
             }
-            val risk = riskRepository.getRisk(route, route.mode)
+            val risk = try {
+                riskRepository.getRisk(route, route.mode)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                route.risk
+            }
             _uiState.value = RouteDetailUiState.Success(route, risk)
         }
     }
