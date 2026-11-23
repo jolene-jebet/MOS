@@ -43,7 +43,8 @@ data class Route(
     val polyline: String = "",
     val risk: Risk = Risk(),
     val stops: List<Stop> = emptyList(),
-    val incidents: List<Incident> = emptyList()
+    val incidents: List<Incident> = emptyList(),
+    val namedStops: List<Stop> = emptyList()
 )
 
 data class Place(

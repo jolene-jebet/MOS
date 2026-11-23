@@ -15,6 +15,9 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import java.io.IOException
 import java.security.MessageDigest
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
 
@@ -45,7 +48,13 @@ data class GoogleApiRoute(
     val description: String? = null,
     val distanceMeters: Int = 0,
     val duration: String? = null, // seconds as text, e.g. "1234s"
-    val polyline: GooglePolyline? = null
+    val polyline: GooglePolyline? = null,
+    val legs: List<GoogleRouteLeg> = emptyList()
+)
+
+// One leg per segment: origin -> stop 1 -> ... -> destination.
+data class GoogleRouteLeg(
+    val duration: String? = null // seconds as text, e.g. "600s"
 )
 
 data class GooglePolyline(
@@ -101,7 +110,7 @@ interface GoogleMapsApiService {
 
 private const val TAG = "MOS-Google"
 private const val ROUTES_FIELD_MASK =
-    "routes.description,routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline"
+    "routes.description,routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.duration"
 private const val PLACES_FIELD_MASK =
     "places.id,places.displayName,places.formattedAddress,places.location"
 
@@ -201,6 +210,7 @@ class GoogleRouteRepository(
                 distanceKm = distanceKm,
                 mode = mode,
                 stops = points,
+                namedStops = buildNamedStops(from, waypoints, to, googleRoute.legs),
                 risk = Risk(
                     overall = riskScore,
                     accident = riskScore * 0.9,
@@ -237,6 +247,43 @@ class GoogleRouteRepository(
     // ---------- helpers ----------
 
     private fun Place.toWaypoint() = GoogleWaypoint(GoogleLocation(GoogleLatLng(lat, lng)))
+
+    /**
+     * Origin, each user-added stop in order, then destination.
+     * If there is one leg per segment, offsetMin is cumulative minutes from the start
+     * and time is the clock time from now (HH:mm). Otherwise time stays blank.
+     */
+    private fun buildNamedStops(
+        from: Place,
+        waypoints: List<Place>,
+        to: Place,
+        legs: List<GoogleRouteLeg>
+    ): List<Stop> {
+        val places = listOf(from) + waypoints + to
+        val legSeconds = legs.map { it.duration?.removeSuffix("s")?.toDoubleOrNull() }
+        val hasTimes = legSeconds.size == places.size - 1 && legSeconds.all { it != null }
+        if (!hasTimes) {
+            return places.map { Stop(name = it.name, lat = it.lat, lng = it.lng) }
+        }
+
+        val startMillis = Calendar.getInstance().timeInMillis
+        val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+        var cumulativeSeconds = 0.0
+        return places.mapIndexed { index, place ->
+            if (index > 0) cumulativeSeconds += legSeconds[index - 1] ?: 0.0
+            val offsetMin = (cumulativeSeconds / 60.0).roundToInt()
+            Stop(
+                name = place.name,
+                lat = place.lat,
+                lng = place.lng,
+                time = Calendar.getInstance().apply {
+                    timeInMillis = startMillis
+                    add(Calendar.MINUTE, offsetMin)
+                }.let { formatter.format(it.time) },
+                offsetMin = offsetMin
+            )
+        }
+    }
 
     /** Name is "Title, address" so the list can show Google-Maps-style two lines. */
     private fun GooglePlaceResult.toPlace(): Place? {
