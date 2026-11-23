@@ -85,3 +85,7 @@
 13. **Render logs.** Shared a screenshot of the server logs showing only health checks, and said the remote risk request never happened.
 14. **Source files and test result.** Attached the app's source files (risk, route and Explore code), a Render log screenshot showing `POST /predict 200 OK`, and the Logcat line `TEST predict OK`.
 15. **This request.** Asked for a summary of all my prompts for my AI-use declaration.
+
+# Adding stops between routes
+- create a new feature that allows me to enter a stop in between my start and final destinations
+- Make it such that the different routes have different shades of intensity depending on the index, so that the first one is like a strong brightness, second one a bit duller and the third option even more dull and so on and so forth. This is to make it such that teh different routes have different shades rather than all of them just coming out as green and you can't tell the difference between anything.

@@ -92,7 +92,7 @@ class OsrmRouteRepository(
     private val fallbackRepository: RouteRepository = FakeRouteRepository()
 ) : RouteRepository {
 
-    override suspend fun getRoutes(from: Place, to: Place, mode: TransportMode): List<Route> {
+    override suspend fun getRoutes(from: Place, to: Place, mode: TransportMode, waypoints: List<Place>): List<Route> {
         return try {
             // OSRM takes longitude first, then latitude: {lng1},{lat1};{lng2},{lat2}
             val coords = "${from.lng},${from.lat};${to.lng},${to.lat}"

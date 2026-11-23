@@ -110,8 +110,8 @@ fun ExploreScreen(
     }
 
     // Animate camera to destination or origin whenever a place is searched or selected
-    LaunchedEffect(uiState.origin, uiState.destination) {
-        val targetPlace = uiState.destination ?: uiState.origin
+    LaunchedEffect(uiState.origin, uiState.destination, uiState.waypoints) {
+        val targetPlace = uiState.destination ?: uiState.waypoints.lastOrNull() ?: uiState.origin
         targetPlace?.let {
             cameraPositionState.animate(
                 com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(
@@ -271,6 +271,16 @@ fun ExploreScreen(
                         )
                     }
 
+                    // Intermediate Waypoint Markers
+                    uiState.waypoints.forEachIndexed { idx, waypoint ->
+                        val waypointState = remember(waypoint.lat, waypoint.lng) { MarkerState(position = LatLng(waypoint.lat, waypoint.lng)) }
+                        Marker(
+                            state = waypointState,
+                            title = waypoint.name.substringBefore(", "),
+                            snippet = "Stop ${idx + 1}"
+                        )
+                    }
+
                     // Destination Marker
                     uiState.destination?.let { dest ->
                         val destState = remember(dest.lat, dest.lng) { MarkerState(position = LatLng(dest.lat, dest.lng)) }
@@ -281,21 +291,43 @@ fun ExploreScreen(
                         )
                     }
 
-                    // Route Polylines (safest route rendered last and thicker with higher zIndex)
+                    // Route Polylines (intensity & width adjusted by index: 1st option brightest, 2nd duller, 3rd faint)
                     uiState.routes.reversed().forEach { route ->
                         if (route.stops.size >= 2) {
-                            val isSafest = route == uiState.routes.first()
+                            val routeIndex = uiState.routes.indexOf(route)
                             val points = route.stops.map { LatLng(it.lat, it.lng) }
-                            val color = when {
+
+                            val baseColor = when {
                                 route.risk.overall < 0.15 -> Color(0xFF2DB864) // Safe green
                                 route.risk.overall <= 0.30 -> Color(0xFFF9AB00) // Caution amber
                                 else -> Color(0xFFD93025) // Risk red
                             }
+
+                            // Intensity / Shade calculation based on route index:
+                            // Index 0: 100% full bright intensity, 18f width
+                            // Index 1: 65% intensity (duller), 13f width
+                            // Index 2+: 40% intensity (fainter), 10f width
+                            val alpha = when (routeIndex) {
+                                0 -> 1.0f
+                                1 -> 0.65f
+                                2 -> 0.40f
+                                else -> (0.35f - ((routeIndex - 2) * 0.10f)).coerceAtLeast(0.20f)
+                            }
+
+                            val strokeWidth = when (routeIndex) {
+                                0 -> 18f
+                                1 -> 13f
+                                2 -> 10f
+                                else -> 8f
+                            }
+
+                            val zIndexVal = (uiState.routes.size - routeIndex).toFloat()
+
                             Polyline(
                                 points = points,
-                                color = color,
-                                width = if (isSafest) 16f else 10f,
-                                zIndex = if (isSafest) 2f else 1f
+                                color = baseColor.copy(alpha = alpha),
+                                width = strokeWidth,
+                                zIndex = zIndexVal
                             )
                         }
                     }
@@ -349,10 +381,13 @@ fun ExploreScreen(
                     }
 
                     // Compact Search Bar (Google Maps style)
-                    val searchLabel = if (uiState.origin != null && uiState.destination != null) {
-                        "${uiState.origin?.name?.substringBefore(", ")} → ${uiState.destination?.name?.substringBefore(", ")}"
-                    } else {
-                        "Search origin & destination..."
+                    val waypoints = uiState.waypoints
+                    val searchLabel = when {
+                        uiState.origin != null && waypoints.isNotEmpty() && uiState.destination != null ->
+                            "${uiState.origin?.name?.substringBefore(", ")} → ${waypoints.joinToString(" → ") { it.name.substringBefore(", ") }} → ${uiState.destination?.name?.substringBefore(", ")}"
+                        uiState.origin != null && uiState.destination != null ->
+                            "${uiState.origin?.name?.substringBefore(", ")} → ${uiState.destination?.name?.substringBefore(", ")}"
+                        else -> "Search origin, stops & destination..."
                     }
 
                     Surface(
@@ -414,87 +449,132 @@ fun ExploreScreen(
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background
             ) {
-                Column(
+                LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .statusBarsPadding()
                         .navigationBarsPadding()
-                        .padding(16.dp)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Top Bar with Back Arrow
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { isSearchFullScreen = false }) {
-                            Text("←", style = MaterialTheme.typography.titleLarge)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Search & Directions",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Transport Mode Selector Pills AT THE TOP in Sentence Case with Icons
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(TransportMode.entries) { mode ->
-                            val isSelected = mode == uiState.selectedMode
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { viewModel.setTransportMode(mode) },
-                                label = {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Text(text = mode.toIcon(), style = MaterialTheme.typography.bodyMedium)
-                                        Text(text = mode.toDisplayName(), style = MaterialTheme.typography.bodyMedium)
-                                    }
-                                }
+                    item {
+                        // Top Bar with Back Arrow
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = { isSearchFullScreen = false }) {
+                                Text("←", style = MaterialTheme.typography.titleLarge)
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Search & Directions",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Origin Search Box with Live Auto-suggestions
-                    LocationSearchInputSection(
-                        label = "Origin (Starting Location)",
-                        query = uiState.originQuery,
-                        searchResults = uiState.originSearchResults,
-                        isSearching = uiState.isSearchingOrigin,
-                        onQueryChanged = { viewModel.searchOrigin(it) },
-                        onPlaceSelected = { place ->
-                            viewModel.selectOrigin(place)
-                            if (uiState.destination != null) {
-                                isSearchFullScreen = false
+                    item {
+                        // Transport Mode Selector Pills AT THE TOP in Sentence Case with Icons
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(TransportMode.entries) { mode ->
+                                val isSelected = mode == uiState.selectedMode
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { viewModel.setTransportMode(mode) },
+                                    label = {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(text = mode.toIcon(), style = MaterialTheme.typography.bodyMedium)
+                                            Text(text = mode.toDisplayName(), style = MaterialTheme.typography.bodyMedium)
+                                        }
+                                    }
+                                )
                             }
                         }
-                    )
+                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    item {
+                        // Origin Search Box with Live Auto-suggestions
+                        LocationSearchInputSection(
+                            label = "Origin (Starting Location)",
+                            query = uiState.originQuery,
+                            searchResults = uiState.originSearchResults,
+                            isSearching = uiState.isSearchingOrigin,
+                            onQueryChanged = { viewModel.searchOrigin(it) },
+                            onPlaceSelected = { place ->
+                                viewModel.selectOrigin(place)
+                                if (uiState.destination != null) {
+                                    isSearchFullScreen = false
+                                }
+                            }
+                        )
+                    }
 
-                    // Destination Search Box with Live Auto-suggestions
-                    LocationSearchInputSection(
-                        label = "Destination (Where to?)",
-                        query = uiState.destinationQuery,
-                        searchResults = uiState.destinationSearchResults,
-                        isSearching = uiState.isSearchingDestination,
-                        onQueryChanged = { viewModel.searchDestination(it) },
-                        onPlaceSelected = { place ->
-                            viewModel.selectDestination(place)
-                            if (uiState.origin != null) {
-                                isSearchFullScreen = false
+                    // Intermediate Waypoint Search Input Sections
+                    items(uiState.waypointStates.size) { index ->
+                        val wpState = uiState.waypointStates[index]
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                LocationSearchInputSection(
+                                    label = "Stop ${index + 1} (In-between Stop)",
+                                    query = wpState.query,
+                                    searchResults = wpState.searchResults,
+                                    isSearching = wpState.isSearching,
+                                    onQueryChanged = { viewModel.searchWaypoint(index, it) },
+                                    onPlaceSelected = { place ->
+                                        viewModel.selectWaypoint(index, place)
+                                        if (uiState.origin != null && uiState.destination != null) {
+                                            isSearchFullScreen = false
+                                        }
+                                    }
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.removeWaypointSlot(index) },
+                                modifier = Modifier.padding(start = 4.dp)
+                            ) {
+                                Text("✕", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
                             }
                         }
-                    )
+                    }
+
+                    item {
+                        // "+ Add stop in between" Button
+                        OutlinedButton(
+                            onClick = { viewModel.addWaypointSlot() },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("➕ Add stop in between", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+
+                    item {
+                        // Destination Search Box with Live Auto-suggestions
+                        LocationSearchInputSection(
+                            label = "Destination (Where to?)",
+                            query = uiState.destinationQuery,
+                            searchResults = uiState.destinationSearchResults,
+                            isSearching = uiState.isSearchingDestination,
+                            onQueryChanged = { viewModel.searchDestination(it) },
+                            onPlaceSelected = { place ->
+                                viewModel.selectDestination(place)
+                                if (uiState.origin != null) {
+                                    isSearchFullScreen = false
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
