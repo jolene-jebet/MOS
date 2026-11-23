@@ -195,6 +195,8 @@ class GoogleRouteRepository(
             Route(
                 id = "google-${mode.name.lowercase()}-$index",
                 name = "$label (${"%.1f".format(distanceKm)} km, $durationMin min)",
+                durationMin = durationMin,
+                distanceKm = distanceKm,
                 mode = mode,
                 stops = points,
                 risk = Risk(
