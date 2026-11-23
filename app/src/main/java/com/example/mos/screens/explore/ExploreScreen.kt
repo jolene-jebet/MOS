@@ -44,6 +44,20 @@ import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.CancellationException
 
+fun TransportMode.toDisplayName(): String = when (this) {
+    TransportMode.WALK -> "Walk"
+    TransportMode.BODA -> "Boda boda"
+    TransportMode.MATATU -> "Matatu"
+    TransportMode.PRIVATE -> "Private car"
+}
+
+fun TransportMode.toIcon(): String = when (this) {
+    TransportMode.WALK -> "🚶"
+    TransportMode.BODA -> "🏍️"
+    TransportMode.MATATU -> "🚌"
+    TransportMode.PRIVATE -> "🚗"
+}
+
 /**
  * ExploreScreen displays a map-centric view powered by Google Maps Compose.
  * Features a compact search bar opening a full-screen search overlay with real-time Google Geocoding place suggestions,
@@ -370,7 +384,7 @@ fun ExploreScreen(
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        text = "Tap to search routes or change mode (${uiState.selectedMode.name})",
+                                        text = "Tap to search routes or change mode (${uiState.selectedMode.toDisplayName()})",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -423,6 +437,31 @@ fun ExploreScreen(
                         )
                     }
 
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Transport Mode Selector Pills AT THE TOP in Sentence Case with Icons
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(TransportMode.entries) { mode ->
+                            val isSelected = mode == uiState.selectedMode
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { viewModel.setTransportMode(mode) },
+                                label = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(text = mode.toIcon(), style = MaterialTheme.typography.bodyMedium)
+                                        Text(text = mode.toDisplayName(), style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Origin Search Box with Live Auto-suggestions
@@ -432,7 +471,12 @@ fun ExploreScreen(
                         searchResults = uiState.originSearchResults,
                         isSearching = uiState.isSearchingOrigin,
                         onQueryChanged = { viewModel.searchOrigin(it) },
-                        onPlaceSelected = { viewModel.selectOrigin(it) }
+                        onPlaceSelected = { place ->
+                            viewModel.selectOrigin(place)
+                            if (uiState.destination != null) {
+                                isSearchFullScreen = false
+                            }
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -444,44 +488,13 @@ fun ExploreScreen(
                         searchResults = uiState.destinationSearchResults,
                         isSearching = uiState.isSearchingDestination,
                         onQueryChanged = { viewModel.searchDestination(it) },
-                        onPlaceSelected = { viewModel.selectDestination(it) }
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Text(
-                        text = "TRANSPORT MODE",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(TransportMode.entries) { mode ->
-                            val isSelected = mode == uiState.selectedMode
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { viewModel.setTransportMode(mode) },
-                                label = { Text(mode.name) }
-                            )
+                        onPlaceSelected = { place ->
+                            viewModel.selectDestination(place)
+                            if (uiState.origin != null) {
+                                isSearchFullScreen = false
+                            }
                         }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    Button(
-                        onClick = {
-                            viewModel.loadRoutes()
-                            isSearchFullScreen = false
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        shape = RoundedCornerShape(25.dp)
-                    ) {
-                        Text("Show Routes on Map", style = MaterialTheme.typography.titleMedium)
-                    }
+                    )
                 }
             }
         }
@@ -616,7 +629,7 @@ fun RouteCardItem(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Mode: ${route.mode} • Stops: ${route.stops.size}",
+                    text = "Mode: ${route.mode.toDisplayName()} • Stops: ${route.stops.size}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

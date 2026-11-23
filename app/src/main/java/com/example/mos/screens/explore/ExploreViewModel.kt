@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 data class ExploreUiState(
     val routes: List<Route> = emptyList(),
@@ -149,12 +152,15 @@ class ExploreViewModel(
                         )
                     }
                 } else {
+                    // Ask the risk model about every route, then rank safest first.
+                    val scoredRoutes = coroutineScope {
+                        fetchedRoutes
+                            .map { route -> async { route.copy(risk = riskRepository.getRisk(route, route.mode)) } }
+                            .awaitAll()
+                    }.sortedBy { it.risk.overall }
+
                     _uiState.update {
-                        it.copy(
-                            routes = fetchedRoutes,
-                            isLoading = false,
-                            errorMessage = null
-                        )
+                        it.copy(routes = scoredRoutes, isLoading = false, errorMessage = null)
                     }
                 }
             } catch (e: CancellationException) {

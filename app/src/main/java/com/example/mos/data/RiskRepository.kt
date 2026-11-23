@@ -48,7 +48,9 @@ class RemoteRiskRepository(private val api: RiskApiService) : RiskRepository {
     private val cache = ConcurrentHashMap<String, Risk>()
 
     override suspend fun getRisk(route: Route, mode: TransportMode): Risk {
+        Log.d("MOS-Risk", "getRisk called: route=${route.id} stops=${route.stops.size} url=$RISK_API_BASE_URL")
         val coordinates = route.stops.map { listOf(it.lat, it.lng) }
+        Log.d("MOS-Risk", "getRisk called: route=${route.id} points=${coordinates.size} url=$RISK_API_BASE_URL")
         if (coordinates.isEmpty()) return route.risk
 
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -57,6 +59,7 @@ class RemoteRiskRepository(private val api: RiskApiService) : RiskRepository {
 
         return try {
             val r = api.predict(RiskPredictRequest(coordinates, mode.name, hour))
+            Log.d("MOS-Risk", "server answered for ${route.id}: overall=${r.overall}")
             Risk(r.overall, r.accident, r.flooding, r.lighting).also { cache[key] = it }
         } catch (e: CancellationException) {
             throw e

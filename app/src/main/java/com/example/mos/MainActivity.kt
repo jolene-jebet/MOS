@@ -29,7 +29,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.mos.data.AuthRepository
 import com.example.mos.data.FakeAuthRepository
-import com.example.mos.data.FakeRiskRepository
+import com.example.mos.data.RISK_API_BASE_URL
 import com.example.mos.data.FakeRouteRepository
 import com.example.mos.data.GoogleRouteRepository
 import com.example.mos.data.RiskRepository
@@ -47,6 +47,8 @@ import com.example.mos.data.RiskApiService
 import com.example.mos.data.createRiskApiService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import android.util.Log
+import com.example.mos.data.RiskPredictRequest
 
 class MainActivity : ComponentActivity() {
 
@@ -61,10 +63,29 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        android.widget.Toast.makeText(
+            this,
+            "risk: ${riskRepository::class.simpleName} @ $RISK_API_BASE_URL",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
+        android.util.Log.d("MOS-Risk", "MainActivity risk repo = ${riskRepository::class.simpleName}, url = $RISK_API_BASE_URL")
         lifecycleScope.launch {
             try { riskApi.health() }
             catch (e: CancellationException) { throw e }
             catch (_: Exception) { }
+
+            try {
+                val r = riskApi.predict(
+                    RiskPredictRequest(
+                        listOf(listOf(-1.2864, 36.8172), listOf(-1.3192, 36.9278)), "MATATU", 17
+                    )
+                )
+                Log.d("MOS-Risk", "TEST predict OK: $r")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("MOS-Risk", "TEST predict failed", e)
+            }
         }
         setContent {
             MOSTheme {
